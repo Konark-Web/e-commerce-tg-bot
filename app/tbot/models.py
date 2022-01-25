@@ -4,13 +4,13 @@ from django.db import models
 
 
 class BotConfig(models.Model):
-    title = models.CharField(verbose_name='Назва бота', max_length=80,
+    title = models.CharField('Назва бота', max_length=80,
                              blank=True, default='')
-    token = models.CharField(verbose_name='Токен бота', max_length=100,
+    token = models.CharField('Токен бота', max_length=100,
                              primary_key=True)
-    server_url = models.CharField(verbose_name='Webhook Url', max_length=200,
+    server_url = models.CharField('Webhook Url', max_length=200,
                                   blank=True, default='')
-    nova_poshta_api = models.CharField(verbose_name='Nova Poshta API', max_length=200,
+    nova_poshta_api = models.CharField('Nova Poshta API', max_length=200,
                                        blank=True)
     is_active = models.BooleanField(default=True)
 

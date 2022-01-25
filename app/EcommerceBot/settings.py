@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-*t0p(s#)^rzpj&a%(s1dj2+d*d-$r3^@mkiqgb5geugx$4ln0x
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['0051-185-159-162-94.ngrok.io']
 
 
 # Application definition
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'tbot',
+    'shop',
 ]
 
 MIDDLEWARE = [
