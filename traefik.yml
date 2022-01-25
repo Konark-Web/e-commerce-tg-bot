@@ -1,0 +1,35 @@
+log:
+ level: DEBUG
+api:
+  dashboard: true
+
+entryPoints:
+  http:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: https
+          scheme: https
+          permanent: true
+  https:
+    address: ":443"
+
+pilot:
+    token: "58ce4121-c1d4-415d-8dd5-9e2d30ba9b4a"
+
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedbydefault: false
+
+certificatesResolvers:
+  sslcert:
+    acme:
+      email: megaelebrus@gmail.com
+      storage: /acme/acme.json
+      dnsChallenge:
+        provider: godaddy
+      httpChallenge:
+        entryPoint: http
