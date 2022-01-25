@@ -6,3 +6,6 @@ venv
 *.log
 *.sql
 *.sqlite
+
+# Env
+.env
