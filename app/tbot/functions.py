@@ -1,6 +1,6 @@
 import re
 
-from shop.models import Customer
+from shop.models import Customer, Category, Shop
 
 
 def get_or_create_user(kwargs):
@@ -54,6 +54,18 @@ def change_customer_city(user_id, city):
 
 def get_user(user_id):
     return Customer.objects.get(telegram_id=user_id)
+
+
+def get_categories():
+    return Category.objects.filter(is_active=True).order_by('-priority').distinct()
+
+
+def get_about_shop():
+    about_shop = Shop.objects.filter(is_active=True).first()
+    if about_shop:
+        return about_shop.about
+
+    return None
 
 
 def validate_phone_number(message):

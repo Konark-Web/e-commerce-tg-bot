@@ -30,6 +30,25 @@ class Category(models.Model):
                                    default=1)
     is_active = models.BooleanField(default=True)
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         verbose_name = 'Категорія товару'
         verbose_name_plural = 'Категорії товарів'
+
+
+class Shop(models.Model):
+    about = models.TextField('Про магазин')
+    is_active = models.BooleanField(default=True)
+
+    def set_active_about(self):
+        if self.is_active:
+            other_active_about = Shop.objects.filter(is_active=True)
+            for about in other_active_about:
+                if about.pk != self.pk:
+                    about.is_active = False
+                    about.save()
+
+    class Meta:
+        verbose_name_plural = 'Інформація про магазин'

@@ -1,8 +1,10 @@
 import telebot
 from telebot import types
 
+from django.core.paginator import Paginator
+
 from .functions import get_or_create_user, add_state_user, change_customer_name, change_customer_phone,\
-    validate_phone_number, change_customer_city, get_user
+    validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop
 
 
 def start_message(message, bot):
@@ -67,6 +69,42 @@ def registration_skip(message, bot):
     start_message(message, bot)
 
 
+def show_catalog(obj, bot, page_num=1):
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    keyboard_page_btn = []
+    categories = get_categories()
+    paginator = Paginator(categories, 10)
+    items_per_page = paginator.get_page(page_num)
+
+    for item in items_per_page:
+        keyboard.add(types.InlineKeyboardButton(item.name, callback_data='dsadad'))
+
+    if items_per_page.has_previous():
+        next_page = items_per_page.previous_page_number()
+        keyboard_page_btn.append(types.InlineKeyboardButton('⬅️', callback_data=f'category_list|{next_page}'))
+
+    if items_per_page.has_next():
+        next_page = items_per_page.next_page_number()
+        keyboard_page_btn.append(types.InlineKeyboardButton('➡️', callback_data=f'category_list|{next_page}'))
+
+    keyboard.add(*keyboard_page_btn)
+
+    if page_num == 1:
+        bot.send_message(obj.chat.id, 'Оберіть категорію яка Вас цікавить:', reply_markup=keyboard)
+    else:
+        bot.edit_message_reply_markup(obj.message.chat.id, obj.message.message_id, reply_markup=keyboard)
+
+
+def show_about_shop(message, bot):
+    about = get_about_shop()
+
+    if about:
+        bot.send_message(message.chat.id, about, reply_markup=back_to_main_keyboard())
+    else:
+        bot.send_message(message.chat.id, 'Нажаль, поки немає інформації про магазин.',
+                         reply_markup=back_to_main_keyboard())
+
+
 # Keyboards
 def main_keyboard():
     keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True,
@@ -103,5 +141,13 @@ def skip_keyboard():
     keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True, one_time_keyboard=True)
 
     keyboard.add(types.KeyboardButton('Пропустити реєстрацію'))
+
+    return keyboard
+
+
+def back_to_main_keyboard():
+    keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True, one_time_keyboard=True)
+
+    keyboard.add(types.KeyboardButton('🔙 До головного меню'))
 
     return keyboard

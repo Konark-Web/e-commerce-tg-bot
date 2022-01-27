@@ -1,5 +1,6 @@
 import telebot
 
+from telebot import types
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
@@ -35,6 +36,12 @@ def text_msg(message):
 
     if message.text == 'Зареєструватися':
         dp.reg_customer_name(message, bot)
+    elif message.text == '🛍 Каталог':
+        dp.show_catalog(message, bot)
+    elif message.text == 'ℹ️ Про магазин':
+        dp.show_about_shop(message, bot)
+    elif message.text == '🔙 До головного меню':
+        dp.start_message(message, bot)
 
     if user.state is not None:
         if message.text and 'reg_customer_name' in user.state:
@@ -61,3 +68,9 @@ def contact_msg(message):
     if user.state is not None:
         if message.contact.phone_number and 'reg_customer_phone' in user.state:
             dp.reg_customer_city(message, bot)
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_handler(call: types.CallbackQuery):
+    if 'category_list' in call.data:
+        dp.show_catalog(call, bot, call.data.split('|')[-1])
