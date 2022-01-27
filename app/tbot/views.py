@@ -74,3 +74,7 @@ def contact_msg(message):
 def callback_handler(call: types.CallbackQuery):
     if 'category_list' in call.data:
         dp.show_catalog(call, bot, call.data.split('|')[-1])
+    elif 'product_list' in call.data:
+        dp.show_products(call, bot, call.data.split('|')[-1])
+    elif 'products_more' in call.data:
+        dp.show_products(call, bot, call.data.split('|')[1], call.data.split('|')[2])

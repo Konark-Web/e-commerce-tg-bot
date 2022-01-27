@@ -1,6 +1,6 @@
 import re
 
-from shop.models import Customer, Category, Shop
+from shop.models import Customer, Category, Shop, Product
 
 
 def get_or_create_user(kwargs):
@@ -60,12 +60,20 @@ def get_categories():
     return Category.objects.filter(is_active=True).distinct()
 
 
+def get_product_by_category(category_id=None):
+    if not category_id:
+        return None
+
+    return Product.objects.filter(category=category_id, is_active=True).order_by('-created').distinct()
+
+
 def get_about_shop():
     about_shop = Shop.objects.filter(is_active=True).first()
-    if about_shop:
-        return about_shop.about
 
-    return None
+    if not about_shop:
+        return None
+
+    return about_shop.about
 
 
 def validate_phone_number(message):

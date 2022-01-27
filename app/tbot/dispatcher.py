@@ -4,7 +4,8 @@ from telebot import types
 from django.core.paginator import Paginator
 
 from .functions import get_or_create_user, add_state_user, change_customer_name, change_customer_phone,\
-    validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop
+    validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop,\
+    get_product_by_category
 
 
 def start_message(message, bot):
@@ -77,7 +78,7 @@ def show_catalog(obj, bot, page_num=1):
     items_per_page = paginator.get_page(page_num)
 
     for item in items_per_page:
-        keyboard.add(types.InlineKeyboardButton(item.name, callback_data='dsadad'))
+        keyboard.add(types.InlineKeyboardButton(item.name, callback_data=f'product_list|{item.pk}'))
 
     if items_per_page.has_previous():
         next_page = items_per_page.previous_page_number()
@@ -93,6 +94,41 @@ def show_catalog(obj, bot, page_num=1):
         bot.send_message(obj.chat.id, 'Оберіть категорію яка Вас цікавить:', reply_markup=keyboard)
     else:
         bot.edit_message_reply_markup(obj.message.chat.id, obj.message.message_id, reply_markup=keyboard)
+
+
+def show_products(obj, bot, category_id, page_num=1):
+    products = get_product_by_category(category_id)
+    paginator = Paginator(products, 5)
+    products_per_page = paginator.get_page(page_num)
+
+    if not products:
+        bot.send_message(obj.message.chat.id, 'Нажаль, активних товарів в цій категорії немає.')
+        show_catalog(obj.message, bot)
+
+    for index, product in enumerate(products_per_page, start=1):
+        keyboard = types.InlineKeyboardMarkup(row_width=1)
+
+        product_text = f'<b>{product.title}</b>\n\n' \
+                       f'{product.excerpt}\n\n' \
+                       f'<b>Ціна:</b> {product.price}'
+
+        if not product.quantity:
+            product_text += '\n\n<i>Нажаль, товару поки немає в наявності.</i>'
+
+        keyboard.add(types.InlineKeyboardButton('ℹ️ Подробиці', callback_data=f'product|{product.pk}'))
+
+        if page_num != 1:
+            bot.edit_message_reply_markup(obj.message.chat.id, obj.message.message_id, reply_markup=keyboard)
+
+        if index == len(products_per_page) and products_per_page.has_next():
+            next_page = products_per_page.next_page_number()
+            keyboard.add(types.InlineKeyboardButton('Загрузити більше товарів',
+                                                    callback_data=f'products_more|{product.category.pk}|{next_page}'))
+
+        if product.image:
+            bot.send_photo(obj.message.chat.id, product.image, product_text, reply_markup=keyboard)
+        else:
+            bot.send_message(obj.message.chat.id, product_text, reply_markup=keyboard)
 
 
 def show_about_shop(message, bot):
