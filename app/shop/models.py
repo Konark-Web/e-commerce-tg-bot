@@ -36,6 +36,7 @@ class Category(models.Model):
     class Meta:
         verbose_name = 'Категорія товару'
         verbose_name_plural = 'Категорії товарів'
+        ordering = ('-priority',)
 
 
 class Shop(models.Model):
@@ -52,3 +53,24 @@ class Shop(models.Model):
 
     class Meta:
         verbose_name_plural = 'Інформація про магазин'
+
+
+class Product(models.Model):
+    title = models.CharField('Назва товару', max_length=100, default='')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True,
+                                 verbose_name='Категорія', related_name='category')
+    excerpt = models.CharField('Короткий опис', max_length=200)
+    description = models.TextField('Повний опис')
+    image = models.ImageField('Зображення', upload_to='product-img/', null=True, blank=True)
+    price = models.FloatField('Ціна', default=0)
+    quantity = models.IntegerField('Кількість товару', default=0)
+    is_active = models.BooleanField(default=True)
+
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, default=None)
+    image = models.ImageField('Зображення', upload_to='product-img/', null=True, blank=True)
+
+    def __str__(self):
+        return self.product.title
+

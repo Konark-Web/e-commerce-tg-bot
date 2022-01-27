@@ -57,7 +57,7 @@ def get_user(user_id):
 
 
 def get_categories():
-    return Category.objects.filter(is_active=True).order_by('-priority').distinct()
+    return Category.objects.filter(is_active=True).distinct()
 
 
 def get_about_shop():
