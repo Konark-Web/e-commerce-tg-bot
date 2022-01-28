@@ -73,8 +73,18 @@ def contact_msg(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call: types.CallbackQuery):
     if 'category_list' in call.data:
-        dp.show_catalog(call, bot, call.data.split('|')[-1])
+        dp.show_catalog(call, bot, page_num=call.data.split('|')[-1])
     elif 'product_list' in call.data:
-        dp.show_products(call, bot, call.data.split('|')[-1])
+        dp.show_products_list(call, bot, category_id=call.data.split('|')[-1])
     elif 'products_more' in call.data:
-        dp.show_products(call, bot, call.data.split('|')[1], call.data.split('|')[2])
+        dp.show_products_list(call,
+                              bot,
+                              category_id=call.data.split('|')[1],
+                              page_num=call.data.split('|')[2])
+    elif 'product_item' in call.data:
+        dp.show_product(call, bot, product_id=call.data.split('|')[-1])
+    elif 'image_product' in call.data:
+        dp.show_product(call, bot, product_id=call.data.split('|')[1], img_num=call.data.split('|')[2])
+    elif 'hide_product' in call.data:
+        dp.hide_product(call, bot)
+

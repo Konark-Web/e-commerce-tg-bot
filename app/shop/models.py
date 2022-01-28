@@ -58,7 +58,7 @@ class Shop(models.Model):
 class Product(models.Model):
     title = models.CharField('Назва товару', max_length=100, default='')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True,
-                                 verbose_name='Категорія', related_name='category')
+                                 verbose_name='Категорія', related_name='product')
     excerpt = models.CharField('Короткий опис', max_length=200, blank=True)
     description = models.TextField('Повний опис')
     image = models.ImageField('Зображення', upload_to='product-img/', null=True, blank=True)
@@ -76,7 +76,7 @@ class Product(models.Model):
 
 
 class ProductImage(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, default=None)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, default=None, related_name='images')
     image = models.ImageField('Зображення', upload_to='product-img/', null=True, blank=True)
 
     def __str__(self):
