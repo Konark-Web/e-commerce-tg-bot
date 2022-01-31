@@ -100,7 +100,7 @@ def get_product_images(product_id=None):
 
 
 def get_or_create_cart(user_id):
-    cart, new_cart = Cart.objects.get_or_create(customer_id=user_id)
+    cart, new_cart = Cart.objects.get_or_create(customer_id=user_id, completed=False)
 
     return cart, new_cart
 
@@ -120,6 +120,10 @@ def get_cart_item_by_id(item_id):
         return CartItem.objects.get(pk=item_id)
     except ObjectDoesNotExist:
         return None
+
+
+def get_cart_items(cart_id):
+    return CartItem.objects.filter(cart=cart_id, is_active=True)
 
 
 def get_about_shop():

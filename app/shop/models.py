@@ -85,7 +85,7 @@ class ProductImage(models.Model):
 
 class Cart(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='Клієнт', related_name='cart')
-    total = models.FloatField('Загальна сума', default=0)
+    total_message_id = models.CharField(max_length=200, null=True)
     completed = models.BooleanField(default=False)
 
 

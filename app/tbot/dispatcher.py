@@ -6,7 +6,7 @@ from django.core.paginator import Paginator
 from .functions import get_or_create_user, add_state_user, change_customer_name, change_customer_phone,\
     validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop,\
     get_products_by_category, get_product_by_id, get_product_images, get_or_create_cart, get_or_create_cart_item,\
-    get_cart_item_by_id
+    get_cart_item_by_id, get_cart_items
 
 
 def start_message(message, bot):
@@ -202,7 +202,7 @@ def add_product_to_cart(obj, bot, product_id):
     else:
         bot.send_message(obj.message.chat.id,
                          get_cart_item_text(product_title=product.title),
-                         reply_markup=item_control_keyboard(cart_item.pk))
+                         reply_markup=item_control_with_cart_keyboard(cart_item.pk))
 
 
 def remove_product_from_cart(obj, bot, item_id):
@@ -216,7 +216,7 @@ def remove_product_from_cart(obj, bot, item_id):
                               show_alert=False)
 
 
-def add_one_more_item(obj, bot, item_id):
+def add_one_more_item(obj, bot, item_id, is_cart=False):
     cart_item = get_cart_item_by_id(item_id)
 
     if not cart_item.is_active:
@@ -228,8 +228,22 @@ def add_one_more_item(obj, bot, item_id):
         cart_item.quantity = cart_item.quantity + 1
         cart_item.save()
 
-        text_message = get_cart_item_text(product_title=cart_item.product.title,
-                                          cart_quantity=cart_item.quantity)
+        # TODO: Need to refactor this part of code
+        if is_cart:
+            item_quantity = cart_item.quantity
+            item_price = cart_item.product.price
+            item_subtotal = item_quantity * item_price
+
+            text_message = get_cart_item_text(product_title=cart_item.product.title,
+                                              quantity=item_quantity,
+                                              price=item_price,
+                                              subtotal=item_subtotal,
+                                              is_cart=True)
+            keyboard = item_control_keyboard(cart_item.pk, is_cart=True)
+        else:
+            text_message = get_cart_item_text(product_title=cart_item.product.title,
+                                              quantity=cart_item.quantity)
+            keyboard = item_control_with_cart_keyboard(cart_item.pk)
 
         bot.answer_callback_query(obj.id, f'Додано 1 одиницю товару до корзини.', show_alert=False)
 
@@ -237,15 +251,15 @@ def add_one_more_item(obj, bot, item_id):
             bot.edit_message_caption(caption=text_message,
                                      chat_id=obj.message.chat.id,
                                      message_id=obj.message.message_id,
-                                     reply_markup=item_control_keyboard(cart_item.pk))
+                                     reply_markup=keyboard)
         else:
             bot.edit_message_text(text=text_message,
                                   chat_id=obj.message.chat.id,
                                   message_id=obj.message.message_id,
-                                  reply_markup=item_control_keyboard(cart_item.pk))
+                                  reply_markup=keyboard)
 
 
-def remove_one_item(obj, bot, item_id):
+def remove_one_item(obj, bot, item_id, is_cart=False):
     cart_item = get_cart_item_by_id(item_id)
 
     if cart_item.quantity <= 1:
@@ -254,8 +268,27 @@ def remove_one_item(obj, bot, item_id):
         cart_item.quantity = cart_item.quantity - 1
         cart_item.save()
 
-        text_message = get_cart_item_text(product_title=cart_item.product.title,
-                                          cart_quantity=cart_item.quantity)
+        # TODO: Need to refactor this part of code
+        if is_cart:
+            item_quantity = cart_item.quantity
+            item_price = cart_item.product.price
+            item_subtotal = item_quantity * item_price
+
+            text_message = get_cart_item_text(product_title=cart_item.product.title,
+                                              quantity=item_quantity,
+                                              price=item_price,
+                                              subtotal=item_subtotal,
+                                              is_cart=True)
+            keyboard = item_control_keyboard(cart_item.pk, is_cart=True)
+
+            # TODO: Refactor (add function for edit total text)
+            bot.edit_message_text(text='Test edit subtotal message',
+                                  chat_id=obj.message.chat.id,
+                                  message_id=cart_item.cart.total_message_id)
+        else:
+            text_message = get_cart_item_text(product_title=cart_item.product.title,
+                                              quantity=cart_item.quantity)
+            keyboard = item_control_with_cart_keyboard(cart_item.pk)
 
         bot.answer_callback_query(obj.id, f'Видалено 1 одиницю товару з корзини.', show_alert=False)
 
@@ -263,12 +296,58 @@ def remove_one_item(obj, bot, item_id):
             bot.edit_message_caption(caption=text_message,
                                      chat_id=obj.message.chat.id,
                                      message_id=obj.message.message_id,
-                                     reply_markup=item_control_keyboard(cart_item.pk))
+                                     reply_markup=keyboard)
         else:
             bot.edit_message_text(text=text_message,
                                   chat_id=obj.message.chat.id,
                                   message_id=obj.message.message_id,
-                                  reply_markup=item_control_keyboard(cart_item.pk))
+                                  reply_markup=keyboard)
+
+
+def show_cart(obj, bot):
+    cart, new_cart = get_or_create_cart(obj.from_user.id)
+    cart_items = get_cart_items(cart)
+    subtotal = 0
+
+    # TODO: Make pagination for cart
+    # paginator = Paginator(cart_items, 5)
+    # items_per_page = paginator.get_page(page_num)
+
+    if not cart_items:
+        bot.send_message(obj.from_user.id, 'Нажаль, корзина поки що порожня.')
+        return
+
+    for item in cart_items:
+        item_quantity = item.quantity
+        item_price = item.product.price
+        item_subtotal = item_quantity * item_price
+        subtotal += item_subtotal
+
+        item_keyboard = item_control_keyboard(item.pk, is_cart=True)
+        text_message = get_cart_item_text(product_title=item.product.title,
+                                          quantity=item_quantity,
+                                          price=item_price,
+                                          subtotal=item_subtotal,
+                                          is_cart=True)
+
+        if item.product.image:
+            bot.send_photo(chat_id=obj.from_user.id,
+                           photo=item.product.image,
+                           caption=text_message,
+                           reply_markup=item_keyboard)
+        else:
+            bot.send_message(chat_id=obj.from_user.id,
+                             text=text_message,
+                             reply_markup=item_keyboard)
+
+    subtotal_message = f'Загальная сума замовлення: {subtotal} грн.\n\n' \
+                       f'Кількість товарів: '
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    keyboard.add(types.InlineKeyboardButton('Зробити замовлення', callback_data='create_order'))
+    cart_total_obj = bot.send_message(chat_id=obj.from_user.id, text=subtotal_message, reply_markup=keyboard)
+
+    cart.total_message_id = cart_total_obj.message_id
+    cart.save()
 
 
 def show_about_shop(message, bot):
@@ -321,13 +400,23 @@ def skip_keyboard():
     return keyboard
 
 
-def item_control_keyboard(item_cart_id):
+def item_control_keyboard(item_cart_id, is_cart=False):
     keyboard = types.InlineKeyboardMarkup(row_width=2)
 
-    keyboard.add(types.InlineKeyboardButton('-1', callback_data=f'remove_one_item|{item_cart_id}'),
-                 types.InlineKeyboardButton('+1', callback_data=f'add_one_item|{item_cart_id}'))
+    cart_callback = ''
+    if is_cart:
+        cart_callback = 'cart|'
+
+    keyboard.add(types.InlineKeyboardButton('-1', callback_data=f'remove_one_item|{cart_callback}{item_cart_id}'),
+                 types.InlineKeyboardButton('+1', callback_data=f'add_one_item|{cart_callback}{item_cart_id}'))
 
     keyboard.add(types.InlineKeyboardButton('❌ Видалити з корзини', callback_data=f'remove_cart_item|{item_cart_id}'))
+
+    return keyboard
+
+
+def item_control_with_cart_keyboard(item_cart_id):
+    keyboard = item_control_keyboard(item_cart_id)
     keyboard.add(types.InlineKeyboardButton('🛒 Перейти до корзини', callback_data=f'show_cart'))
 
     return keyboard
@@ -342,10 +431,16 @@ def back_to_main_keyboard():
 
 
 # Temp function
-def get_cart_item_text(product_title, cart_quantity=None, only_added=False):
-    message_text = f'<b>Товар {product_title} доданий у корзину.</b>'
+def get_cart_item_text(product_title, quantity=None, price=None, subtotal=None, is_cart=False, only_added=False):
+    if is_cart:
+        message_text = f'<b>{product_title}</b>\n\n' \
+                       f'Кількість: {quantity}\n' \
+                       f'Ціна за ед.: {price}\n' \
+                       f'Загальная ціна: {subtotal}\n'
+    else:
+        message_text = f'<b>Товар {product_title} доданий у корзину.</b>'
 
-    if not only_added and cart_quantity:
-        message_text += f'\n\nЗараз цього товару у корзині: {cart_quantity}'
+        if not only_added and quantity:
+            message_text += f'\n\nЗараз цього товару у корзині: {quantity}'
 
     return message_text

@@ -38,6 +38,8 @@ def text_msg(message):
         dp.reg_customer_name(message, bot)
     elif message.text == '🛍 Каталог':
         dp.show_catalog(message, bot)
+    elif message.text == '🛒 Корзина':
+        dp.show_cart(message, bot)
     elif message.text == 'ℹ️ Про магазин':
         dp.show_about_shop(message, bot)
     elif message.text == '🔙 До головного меню':
@@ -92,7 +94,17 @@ def callback_handler(call: types.CallbackQuery):
     elif 'remove_cart_item' in call.data:
         dp.remove_product_from_cart(call, bot, item_id=call.data.split('|')[-1])
     elif 'add_one_item' in call.data:
-        dp.add_one_more_item(call, bot, item_id=call.data.split('|')[-1])
+        is_cart = False
+        if 'cart' in call.data:
+            is_cart = True
+
+        dp.add_one_more_item(call, bot, item_id=call.data.split('|')[-1], is_cart=is_cart)
     elif 'remove_one_item' in call.data:
-        dp.remove_one_item(call, bot, item_id=call.data.split('|')[-1])
+        is_cart = False
+        if 'cart' in call.data:
+            is_cart = True
+
+        dp.remove_one_item(call, bot, item_id=call.data.split('|')[-1], is_cart=is_cart)
+    elif 'show_cart' in call.data:
+        dp.show_cart(call, bot)
 
