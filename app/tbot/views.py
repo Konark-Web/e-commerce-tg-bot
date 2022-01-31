@@ -91,4 +91,8 @@ def callback_handler(call: types.CallbackQuery):
         dp.add_product_to_cart(call, bot, product_id=call.data.split('|')[-1])
     elif 'remove_cart_item' in call.data:
         dp.remove_product_from_cart(call, bot, item_id=call.data.split('|')[-1])
+    elif 'add_one_item' in call.data:
+        dp.add_one_more_item(call, bot, item_id=call.data.split('|')[-1])
+    elif 'remove_one_item' in call.data:
+        dp.remove_one_item(call, bot, item_id=call.data.split('|')[-1])
 

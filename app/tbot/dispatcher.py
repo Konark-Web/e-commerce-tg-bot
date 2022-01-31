@@ -201,7 +201,7 @@ def add_product_to_cart(obj, bot, product_id):
                                       show_alert=False)
     else:
         bot.send_message(obj.message.chat.id,
-                         f'<b>Товар {product.title} доданий у корзину.</b>',
+                         get_cart_item_text(product_title=product.title),
                          reply_markup=item_control_keyboard(cart_item.pk))
 
 
@@ -214,6 +214,61 @@ def remove_product_from_cart(obj, bot, item_id):
     bot.answer_callback_query(obj.id,
                               f'Товар успішно видалений с корзини.',
                               show_alert=False)
+
+
+def add_one_more_item(obj, bot, item_id):
+    cart_item = get_cart_item_by_id(item_id)
+
+    if not cart_item.is_active:
+        add_product_to_cart(obj, bot, cart_item.product.pk)
+
+    if cart_item.quantity >= cart_item.product.quantity:
+        bot.answer_callback_query(obj.id, 'Нажаль, поки це все що є в наявності.', False)
+    else:
+        cart_item.quantity = cart_item.quantity + 1
+        cart_item.save()
+
+        text_message = get_cart_item_text(product_title=cart_item.product.title,
+                                          cart_quantity=cart_item.quantity)
+
+        bot.answer_callback_query(obj.id, f'Додано 1 одиницю товару до корзини.', show_alert=False)
+
+        if obj.message.content_type == 'photo':
+            bot.edit_message_caption(caption=text_message,
+                                     chat_id=obj.message.chat.id,
+                                     message_id=obj.message.message_id,
+                                     reply_markup=item_control_keyboard(cart_item.pk))
+        else:
+            bot.edit_message_text(text=text_message,
+                                  chat_id=obj.message.chat.id,
+                                  message_id=obj.message.message_id,
+                                  reply_markup=item_control_keyboard(cart_item.pk))
+
+
+def remove_one_item(obj, bot, item_id):
+    cart_item = get_cart_item_by_id(item_id)
+
+    if cart_item.quantity <= 1:
+        bot.answer_callback_query(obj.id, 'Меньше вже немає куди. Можете тільки видалити товар з корзини.', False)
+    else:
+        cart_item.quantity = cart_item.quantity - 1
+        cart_item.save()
+
+        text_message = get_cart_item_text(product_title=cart_item.product.title,
+                                          cart_quantity=cart_item.quantity)
+
+        bot.answer_callback_query(obj.id, f'Видалено 1 одиницю товару з корзини.', show_alert=False)
+
+        if obj.message.content_type == 'photo':
+            bot.edit_message_caption(caption=text_message,
+                                     chat_id=obj.message.chat.id,
+                                     message_id=obj.message.message_id,
+                                     reply_markup=item_control_keyboard(cart_item.pk))
+        else:
+            bot.edit_message_text(text=text_message,
+                                  chat_id=obj.message.chat.id,
+                                  message_id=obj.message.message_id,
+                                  reply_markup=item_control_keyboard(cart_item.pk))
 
 
 def show_about_shop(message, bot):
@@ -284,3 +339,13 @@ def back_to_main_keyboard():
     keyboard.add(types.KeyboardButton('🔙 До головного меню'))
 
     return keyboard
+
+
+# Temp function
+def get_cart_item_text(product_title, cart_quantity=None, only_added=False):
+    message_text = f'<b>Товар {product_title} доданий у корзину.</b>'
+
+    if not only_added and cart_quantity:
+        message_text += f'\n\nЗараз цього товару у корзині: {cart_quantity}'
+
+    return message_text
