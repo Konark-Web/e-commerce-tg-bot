@@ -2,7 +2,7 @@ import re
 
 from itertools import chain
 from django.core.exceptions import ObjectDoesNotExist
-from shop.models import Customer, Category, Shop, Product, ProductImage
+from shop.models import Customer, Category, Shop, Product, ProductImage, Cart, CartItem
 
 
 def get_or_create_user(kwargs):
@@ -98,6 +98,21 @@ def get_product_images(product_id=None):
 
     return product_images
 
+
+def get_or_create_cart(user_id):
+    cart, new_cart = Cart.objects.get_or_create(customer_id=user_id)
+
+    return cart, new_cart
+
+
+def get_or_create_cart_item(cart, product):
+    cart_item, cart_item_new = CartItem.objects.get_or_create(
+        cart=cart,
+        product=product,
+        is_active=True
+    )
+
+    return cart_item, cart_item_new
 
 def get_about_shop():
     about_shop = Shop.objects.filter(is_active=True).first()

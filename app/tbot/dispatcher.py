@@ -5,7 +5,7 @@ from django.core.paginator import Paginator
 
 from .functions import get_or_create_user, add_state_user, change_customer_name, change_customer_phone,\
     validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop,\
-    get_products_by_category, get_product_by_id, get_product_images
+    get_products_by_category, get_product_by_id, get_product_images, get_or_create_cart, get_or_create_cart_item
 
 
 def start_message(message, bot):
@@ -183,6 +183,33 @@ def hide_product(obj, bot):
     bot.delete_message(obj.message.chat.id, obj.message.message_id)
 
 
+def add_product_to_cart(obj, bot, product_id):
+    cart, new_cart = get_or_create_cart(obj.from_user.id)
+    product = get_product_by_id(product_id)
+    cart_item, cart_item_new = get_or_create_cart_item(cart, product)
+
+    if not cart_item_new:
+        if not product.quantity:
+            bot.answer_callback_query(obj.id, 'Нажаль, поки це все що є в наявності.', False)
+        else:
+            cart_item.quantity = cart_item.quantity + 1
+            product.quantity = product.quantity - 1
+
+            cart_item.save()
+            product.save()
+
+            bot.answer_callback_query(obj.id,
+                                      f'Додано ще 1 одиницю товару до корзини. Зараз у корзині: {cart_item.quantity}',
+                                      show_alert=False)
+    else:
+        product.quantity = product.quantity - 1
+        product.save()
+
+        bot.send_message(obj.message.chat.id,
+                         f'<b>Товар {product.title} доданий у корзину.</b>',
+                         reply_markup=item_control_keyboard(cart_item.pk))
+
+
 def show_about_shop(message, bot):
     about = get_about_shop()
 
@@ -229,6 +256,18 @@ def skip_keyboard():
     keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True, one_time_keyboard=True)
 
     keyboard.add(types.KeyboardButton('Пропустити реєстрацію'))
+
+    return keyboard
+
+
+def item_control_keyboard(item_cart_id):
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+
+    keyboard.add(types.InlineKeyboardButton('-1', callback_data=f'remove_one_item|{item_cart_id}'),
+                 types.InlineKeyboardButton('+1', callback_data=f'add_one_item|{item_cart_id}'))
+
+    keyboard.add(types.InlineKeyboardButton('❌ Видалити з корзини', callback_data=f'remove_cart_item|{item_cart_id}'))
+    keyboard.add(types.InlineKeyboardButton('🛒 Перейти до корзини', callback_data=f'show_cart'))
 
     return keyboard
 

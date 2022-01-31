@@ -82,3 +82,15 @@ class ProductImage(models.Model):
     def __str__(self):
         return self.product.title
 
+
+class Cart(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='Клієнт', related_name='cart')
+    total = models.FloatField('Загальна сума', default=0)
+    completed = models.BooleanField(default=False)
+
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='cart_item')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_item')
+    quantity = models.IntegerField(default=1)
+    is_active = models.BooleanField(default=True)
