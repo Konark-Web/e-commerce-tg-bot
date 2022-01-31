@@ -207,7 +207,13 @@ def add_product_to_cart(obj, bot, product_id):
 
 def remove_product_from_cart(obj, bot, item_id):
     cart_item = get_cart_item_by_id(item_id)
-    # cart_item
+    cart_item.is_active = False
+    cart_item.save()
+
+    bot.delete_message(obj.message.chat.id, obj.message.message_id)
+    bot.answer_callback_query(obj.id,
+                              f'Товар успішно видалений с корзини.',
+                              show_alert=False)
 
 
 def show_about_shop(message, bot):
