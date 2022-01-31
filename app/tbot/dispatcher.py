@@ -5,7 +5,8 @@ from django.core.paginator import Paginator
 
 from .functions import get_or_create_user, add_state_user, change_customer_name, change_customer_phone,\
     validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop,\
-    get_products_by_category, get_product_by_id, get_product_images, get_or_create_cart, get_or_create_cart_item
+    get_products_by_category, get_product_by_id, get_product_images, get_or_create_cart, get_or_create_cart_item,\
+    get_cart_item_by_id
 
 
 def start_message(message, bot):
@@ -189,25 +190,24 @@ def add_product_to_cart(obj, bot, product_id):
     cart_item, cart_item_new = get_or_create_cart_item(cart, product)
 
     if not cart_item_new:
-        if not product.quantity:
+        if cart_item.quantity >= product.quantity:
             bot.answer_callback_query(obj.id, 'Нажаль, поки це все що є в наявності.', False)
         else:
             cart_item.quantity = cart_item.quantity + 1
-            product.quantity = product.quantity - 1
-
             cart_item.save()
-            product.save()
 
             bot.answer_callback_query(obj.id,
                                       f'Додано ще 1 одиницю товару до корзини. Зараз у корзині: {cart_item.quantity}',
                                       show_alert=False)
     else:
-        product.quantity = product.quantity - 1
-        product.save()
-
         bot.send_message(obj.message.chat.id,
                          f'<b>Товар {product.title} доданий у корзину.</b>',
                          reply_markup=item_control_keyboard(cart_item.pk))
+
+
+def remove_product_from_cart(obj, bot, item_id):
+    cart_item = get_cart_item_by_id(item_id)
+    # cart_item
 
 
 def show_about_shop(message, bot):

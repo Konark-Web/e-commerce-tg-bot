@@ -114,6 +114,14 @@ def get_or_create_cart_item(cart, product):
 
     return cart_item, cart_item_new
 
+
+def get_cart_item_by_id(item_id):
+    try:
+        return CartItem.objects.get(pk=item_id)
+    except ObjectDoesNotExist:
+        return None
+
+
 def get_about_shop():
     about_shop = Shop.objects.filter(is_active=True).first()
 
