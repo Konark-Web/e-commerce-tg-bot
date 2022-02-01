@@ -25,11 +25,14 @@ def start_message(message, bot):
                          'Давайте пройдемо коротку реєстрацію, але Ви можете її пропустити.',
                          reply_markup=registration_keyboard())
     else:
-        bot.send_message(message.chat.id, '<b>Ви перейшли до головного меню.</b>\n\n'
+        bot.send_message(message.chat.id,
+                         '<b>Ви перейшли до головного меню.</b>\n\n'
                          '🛍 Каталог - пошук та купівля товару\n'
                          '🛒 Корзина - оформлення замовлень\n'
                          'ℹ️ Про магазин - більше інформації про нас\n'
-                         '👤 Мої замовлення - перегляд попередніх замовлень\n', reply_markup=main_keyboard())
+                         '👤 Мої замовлення - перегляд попередніх замовлень\n'
+                         '🔎 Пошук - пошук по каталогу товарів магазину',
+                         reply_markup=main_keyboard())
 
 
 def reg_customer_name(message, bot):
@@ -298,6 +301,51 @@ def show_cart(obj, bot):
     cart.save()
 
 
+def new_order_customer_name(obj, bot):
+    user_id = obj.from_user.id
+    user = get_user(user_id)
+
+    bot.send_message(obj.from_user.id, 'Давайте почнемо оформлювати замовлення.')
+    add_state_user(user_id, 'new_order_customer_name')
+
+    if user.customer_name:
+        bot.send_message(chat_id=user_id,
+                         text=f'У Вас вже встановленне ім\'я. Введіть нове чи підтвердіть поточне.\n'
+                         f'Зараз: {user.customer_name}',
+                         reply_markup=order_keyboard(True))
+    else:
+        bot.send_message(chat_id=user_id,
+                         text=f'Введіть ім\'я людини яка буде забирати замовлення.',
+                         reply_markup=order_keyboard())
+
+
+def new_order_phone(obj, bot, confirmed=False):
+    user_id = obj.from_user.id
+    user = get_user(user_id)
+
+    if not confirmed:
+        change_customer_name(user_id, obj.text)
+        bot.send_message(user_id, f'✅ Ім\'я успішно змінено на {user.customer_name}.')
+
+    add_state_user(user_id, 'new_order_phone')
+
+    if user.phone_number:
+        bot.send_message(chat_id=user_id,
+                         text=f'У Вас вже встановленний номер телефону. '
+                              f'Введіть новий (або поширте задопомогою кнопки нижче) чи підтвердіть поточний.\n'
+                              f'Зараз: {user.phone_number}',
+                         reply_markup=order_keyboard(info=True, number=True))
+    else:
+        bot.send_message(chat_id=user_id,
+                         text=f'Введіть номер телефону або поширте його задопомогою кнопки нижче.',
+                         reply_markup=order_keyboard(number=True))
+
+
+def new_order_skip(obj, bot):
+    add_state_user(user_id=obj.from_user.id)
+    show_cart(obj, bot)
+
+
 def show_about_shop(message, bot):
     about = get_about_shop()
 
@@ -306,6 +354,12 @@ def show_about_shop(message, bot):
     else:
         bot.send_message(message.chat.id, 'Нажаль, поки немає інформації про магазин.',
                          reply_markup=back_to_main_keyboard())
+
+
+def show_search_button(message, bot):
+    bot.send_message(message.from_user.id,
+                     f'Для пошука товару в нашому магазині натисніть "Пошук" та введіть назву товару.',
+                     reply_markup=search_keyboard())
 
 
 def search_inline(search, query, bot):
@@ -342,6 +396,7 @@ def main_keyboard():
                  types.KeyboardButton('🛒 Корзина'))
     keyboard.add(types.KeyboardButton('ℹ️ Про магазин'),
                  types.KeyboardButton('👤 Мої замовлення'))
+    keyboard.add(types.KeyboardButton('🔎 Пошук'))
 
     return keyboard
 
@@ -361,6 +416,31 @@ def number_keyboard():
 
     keyboard.add(types.KeyboardButton('Поділитися номером', request_contact=True))
     keyboard.add(types.KeyboardButton('Пропустити реєстрацію'))
+
+    return keyboard
+
+
+def order_keyboard(info=False, number=False):
+    keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=True)
+
+    if info:
+        keyboard.add(types.KeyboardButton('✅ Підтвердити'))
+
+    if number:
+        keyboard.add(types.KeyboardButton('Відправити номер телефону', request_contact=True))
+
+    keyboard.add(types.KeyboardButton('🔙 Назад'),
+                 types.KeyboardButton('🚫 Відміна'))
+
+    return keyboard
+
+
+def search_keyboard():
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+
+    keyboard.add(
+        types.InlineKeyboardButton('Пошук',
+                                   switch_inline_query_current_chat=''))
 
     return keyboard
 
@@ -462,8 +542,9 @@ def get_subtotal_text_and_keyboard(cart):
     if subtotal:
         subtotal_message = f'Загальная сума замовлення: {subtotal} грн.\n\n' \
                            f'Кількість товарів: {quantity}'
+
         keyboard = types.InlineKeyboardMarkup(row_width=1)
-        keyboard.add(types.InlineKeyboardButton('Зробити замовлення', callback_data='create_order'))
+        keyboard.add(types.InlineKeyboardButton('Зробити замовлення', callback_data='new_order'))
     else:
         subtotal_message = 'Вже немає чого купувати. Додайте щось і ми продовжимо.'
         keyboard = None

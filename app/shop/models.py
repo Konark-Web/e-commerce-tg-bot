@@ -9,6 +9,8 @@ class Customer(models.Model):
     customer_name = models.CharField('ФІО користувача', max_length=255, blank=True, default='')
     phone_number = models.CharField('Номер телефону', max_length=64, blank=True, default='')
     city = models.CharField('Місто', max_length=200, blank=True, default='')
+    address = models.CharField('Адреса доставки', max_length=255, blank=True, default='')
+    post_number = models.CharField('Номер відділення', max_length=32, blank=True, default='')
     date_joined = models.DateTimeField('Дата реєстрації', auto_now_add=True)
     state = models.CharField(max_length=200, blank=True, null=True, default=None, editable=False)
     is_active = models.BooleanField(default=True)

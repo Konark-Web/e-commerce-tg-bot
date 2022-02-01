@@ -42,6 +42,8 @@ def text_msg(message):
         dp.show_cart(message, bot)
     elif message.text == 'ℹ️ Про магазин':
         dp.show_about_shop(message, bot)
+    elif message.text == '🔎 Пошук':
+        dp.show_search_button(message, bot)
     elif message.text == '🔙 До головного меню':
         dp.start_message(message, bot)
 
@@ -61,6 +63,13 @@ def text_msg(message):
                 dp.registration_skip(message, bot)
             else:
                 dp.reg_customer_finish(message, bot)
+        elif message.text and 'new_order_customer_name' in user.state:
+            if message.text == '🔙 Назад' or message.text == '🚫 Відміна':
+                dp.new_order_skip(message, bot)
+            elif message.text == '✅ Підтвердити':
+                dp.new_order_phone(message, bot, confirmed=True)
+            else:
+                dp.new_order_phone(message, bot)
 
 
 @bot.message_handler(content_types=['contact'])
@@ -111,6 +120,8 @@ def callback_handler(call: types.CallbackQuery):
         dp.remove_one_item(call, bot, item_id=call.data.split('|')[-1], is_cart=is_cart)
     elif 'show_cart' in call.data:
         dp.show_cart(call, bot)
+    elif 'new_order' in call.data:
+        dp.new_order_customer_name(call, bot)
 
 
 @bot.inline_handler(func=lambda query: True)
@@ -120,7 +131,5 @@ def query_text(query):
 
 @bot.chosen_inline_handler(func=lambda query: True)
 def inline_chosen(query):
-    print(query)
     dp.show_product(query, bot, product_id=query.result_id)
-    # print(query.split('|'))
 
