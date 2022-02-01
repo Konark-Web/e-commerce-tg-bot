@@ -2,7 +2,12 @@ import re
 
 from itertools import chain
 from django.core.exceptions import ObjectDoesNotExist
+from .models import BotConfig
 from shop.models import Customer, Category, Shop, Product, ProductImage, Cart, CartItem
+
+
+def get_bot_url():
+    return BotConfig.objects.filter(is_active=True).first().server_url
 
 
 def get_or_create_user(kwargs):
@@ -63,6 +68,10 @@ def get_user(user_id):
 
 def get_categories():
     return Category.objects.filter(is_active=True).distinct()
+
+
+def get_product_by_title(title):
+    return Product.objects.filter(title__icontains=title, is_active=True)
 
 
 def get_products_by_category(category_id=None):

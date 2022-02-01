@@ -6,7 +6,7 @@ from django.core.paginator import Paginator
 from .functions import get_or_create_user, add_state_user, change_customer_name, change_customer_phone,\
     validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop,\
     get_products_by_category, get_product_by_id, get_product_images, get_or_create_cart, get_or_create_cart_item,\
-    get_cart_item_by_id, get_cart_items
+    get_cart_item_by_id, get_cart_items, get_product_by_title, get_bot_url
 
 
 def start_message(message, bot):
@@ -169,15 +169,15 @@ def show_product(obj, bot, product_id, img_num=1):
     keyboard.add(types.InlineKeyboardButton('🔙 Назад', callback_data='hide_product'))
     if product.image:
         if img_num == 1:
-            bot.send_photo(obj.message.chat.id, product.image, product_text, reply_markup=keyboard)
+            bot.send_photo(obj.from_user.id, product.image, product_text, reply_markup=keyboard)
         else:
             bot.edit_message_media(types.InputMedia(type='photo', media=product_image[0].image),
-                                   obj.message.chat.id,
+                                   obj.from_user.id,
                                    obj.message.message_id,
                                    reply_markup=keyboard)
-            bot.edit_message_caption(product_text, obj.message.chat.id, obj.message.message_id, reply_markup=keyboard)
+            bot.edit_message_caption(product_text, obj.from_user.id, obj.message.message_id, reply_markup=keyboard)
     else:
-        bot.send_message(obj.message.chat.id, product_text, reply_markup=keyboard)
+        bot.send_message(obj.from_user.id, product_text, reply_markup=keyboard)
 
 
 def hide_product(obj, bot):
@@ -301,6 +301,31 @@ def show_about_shop(message, bot):
     else:
         bot.send_message(message.chat.id, 'Нажаль, поки немає інформації про магазин.',
                          reply_markup=back_to_main_keyboard())
+
+
+def search_inline(search, query, bot):
+    inlines = []
+    results = get_product_by_title(search)
+    offset = int(query.offset) if query.offset else 0
+
+    for result in results:
+        inlines.append(types.InlineQueryResultArticle(
+            id=result.pk,
+            title=result.title,
+            description=result.excerpt,
+            thumb_url=get_bot_url() + result.image.url,
+            input_message_content=types.InputTextMessageContent(
+                message_text=f'Товар: {result.title}'
+            )
+        ))
+
+    next_offset = f"{offset + 10}"
+    bot.answer_inline_query(
+        inline_query_id=query.id,
+        results=inlines[offset: offset + 10],
+        cache_time=0,
+        next_offset=next_offset
+    )
 
 
 # Keyboards

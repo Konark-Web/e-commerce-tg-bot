@@ -112,3 +112,15 @@ def callback_handler(call: types.CallbackQuery):
     elif 'show_cart' in call.data:
         dp.show_cart(call, bot)
 
+
+@bot.inline_handler(func=lambda query: True)
+def query_text(query):
+    dp.search_inline(query.query, query, bot)
+
+
+@bot.chosen_inline_handler(func=lambda query: True)
+def inline_chosen(query):
+    print(query)
+    dp.show_product(query, bot, product_id=query.result_id)
+    # print(query.split('|'))
+
