@@ -114,3 +114,29 @@ class CartItem(models.Model):
     @property
     def get_total_price(self):
         return self.quantity * self.product.price
+
+
+class Order(models.Model):
+    CHOICES = (
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('canceled', 'Canceled'),
+        ('pending', 'Pending payment'),
+        ('refunded', 'Refunded')
+    )
+
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='order')
+    customer_name = models.CharField('ФІО покупця', max_length=255, default='')
+    phone_number = models.CharField('Номер телефону', max_length=64, default='')
+    city = models.CharField('Місто', max_length=200, default='')
+    address = models.CharField('Адреса доставки', max_length=255, default='')
+    post_number = models.CharField('Номер відділення', max_length=32, default='')
+    total = models.FloatField('Загальна сума замовлення', default=0)
+    status = models.CharField('Статус замовлення', max_length=25, null=False, choices=CHOICES)
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    price = models.FloatField('Ціна', null=False, default=0)
+    quantity = models.IntegerField('Кількість товару', null=False, default=0)

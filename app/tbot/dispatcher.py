@@ -171,11 +171,14 @@ def show_product(obj, bot, product_id, img_num=1):
         if img_num == 1:
             bot.send_photo(obj.from_user.id, product.image, product_text, reply_markup=keyboard)
         else:
-            bot.edit_message_media(types.InputMedia(type='photo', media=product_image[0].image),
+            bot.edit_message_media(types.InputMedia(type='photo',media=product_image[0].image),
                                    obj.from_user.id,
                                    obj.message.message_id,
                                    reply_markup=keyboard)
-            bot.edit_message_caption(product_text, obj.from_user.id, obj.message.message_id, reply_markup=keyboard)
+            bot.edit_message_caption(product_text,
+                                     obj.from_user.id,
+                                     obj.message.message_id,
+                                     reply_markup=keyboard)
     else:
         bot.send_message(obj.from_user.id, product_text, reply_markup=keyboard)
 
@@ -243,7 +246,9 @@ def remove_one_item(obj, bot, item_id, is_cart=False):
     cart_item = get_cart_item_by_id(item_id)
 
     if cart_item.quantity <= 1:
-        bot.answer_callback_query(obj.id, 'Меньше вже немає куди. Можете тільки видалити товар з корзини.', False)
+        bot.answer_callback_query(obj.id,
+                                  'Меньше вже немає куди. Можете тільки видалити товар з корзини.',
+                                  show_alert=False)
     else:
         cart_item.quantity = cart_item.quantity - 1
         cart_item.save()
@@ -375,10 +380,12 @@ def item_control_keyboard(item_cart_id, is_cart=False):
     if is_cart:
         cart_callback = 'cart|'
 
-    keyboard.add(types.InlineKeyboardButton('-1', callback_data=f'remove_one_item|{cart_callback}{item_cart_id}'),
-                 types.InlineKeyboardButton('+1', callback_data=f'add_one_item|{cart_callback}{item_cart_id}'))
+    keyboard.add(types.InlineKeyboardButton(text='-1',
+                                            callback_data=f'remove_one_item|{cart_callback}{item_cart_id}'),
+                 types.InlineKeyboardButton(text='+1',
+                                            callback_data=f'add_one_item|{cart_callback}{item_cart_id}'))
 
-    keyboard.add(types.InlineKeyboardButton('❌ Видалити з корзини',
+    keyboard.add(types.InlineKeyboardButton(text='❌ Видалити з корзини',
                                             callback_data=f'remove_cart_item|{cart_callback}{item_cart_id}'))
 
     return keyboard
