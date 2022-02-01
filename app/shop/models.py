@@ -55,7 +55,18 @@ class Shop(models.Model):
                     about.is_active = False
                     about.save()
 
+    def save(self, *args, **kwargs):
+        self.set_active_about()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        if self.is_active:
+            return f'Актуальная інформація про магазин [{self.pk}]'
+        else:
+            return f'Неактивна інформація про магазин [{self.pk}]'
+
     class Meta:
+        verbose_name = 'Інфо'
         verbose_name_plural = 'Інформація про магазин'
 
 
@@ -133,6 +144,10 @@ class Order(models.Model):
     post_number = models.CharField('Номер відділення', max_length=32, default='')
     total = models.FloatField('Загальна сума замовлення', default=0)
     status = models.CharField('Статус замовлення', max_length=25, null=False, choices=CHOICES)
+
+    class Meta:
+        verbose_name = 'Замовлення'
+        verbose_name_plural = 'Замовлення'
 
 
 class OrderItem(models.Model):

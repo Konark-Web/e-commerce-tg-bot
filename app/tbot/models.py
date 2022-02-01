@@ -33,7 +33,14 @@ class BotConfig(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.title
+        if self.is_active:
+            return f'Актуальні налаштування бота [{self.title}]'
+        else:
+            return f'Неактивні налаштування бота [{self.title}]'
+
+    class Meta:
+        verbose_name = 'Налаштування'
+        verbose_name_plural = 'Налаштування бота'
 
 
 
