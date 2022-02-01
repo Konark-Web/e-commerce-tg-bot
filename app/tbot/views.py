@@ -92,7 +92,11 @@ def callback_handler(call: types.CallbackQuery):
     elif 'add_to_cart' in call.data:
         dp.add_product_to_cart(call, bot, product_id=call.data.split('|')[-1])
     elif 'remove_cart_item' in call.data:
-        dp.remove_product_from_cart(call, bot, item_id=call.data.split('|')[-1])
+        is_cart = False
+        if 'cart' in call.data:
+            is_cart = True
+
+        dp.remove_product_from_cart(call, bot, item_id=call.data.split('|')[-1], is_cart=is_cart)
     elif 'add_one_item' in call.data:
         is_cart = False
         if 'cart' in call.data:

@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Sum
 
 
 class Customer(models.Model):
@@ -88,8 +89,20 @@ class ProductImage(models.Model):
 
 class Cart(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='Клієнт', related_name='cart')
-    total_message_id = models.CharField(max_length=200, null=True)
+    total_message_id = models.CharField(max_length=200, null=True, editable=False)
     completed = models.BooleanField(default=False)
+
+    @property
+    def get_subtotal(self):
+        active_items = CartItem.objects.filter(cart=self.pk, is_active=True)
+        total_price = 0
+        quantity = 0
+
+        for item in active_items:
+            total_price += item.get_total_price
+            quantity += item.quantity
+
+        return total_price, quantity
 
 
 class CartItem(models.Model):
@@ -97,3 +110,7 @@ class CartItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_item')
     quantity = models.IntegerField(default=1)
     is_active = models.BooleanField(default=True)
+
+    @property
+    def get_total_price(self):
+        return self.quantity * self.product.price
