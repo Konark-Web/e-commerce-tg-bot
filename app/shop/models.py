@@ -143,7 +143,7 @@ class Order(models.Model):
     phone_number = models.CharField('Номер телефону', max_length=64, default='')
     city = models.CharField('Місто', max_length=200, default='')
     address = models.CharField('Адреса доставки', max_length=255, default='')
-    post_number = models.CharField('Номер відділення', max_length=32, default='')
+    post_number = models.CharField('Номер відділення', blank=True, max_length=32, default='')
     total = models.FloatField('Загальна сума замовлення', default=0)
     status = models.CharField('Статус замовлення', max_length=25, null=False, choices=CHOICES)
 
@@ -153,7 +153,7 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
     price = models.FloatField('Ціна', null=False, default=0)
     quantity = models.IntegerField('Кількість товару', null=False, default=0)

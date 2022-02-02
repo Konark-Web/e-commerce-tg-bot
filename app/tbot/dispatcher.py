@@ -1,4 +1,5 @@
 import telebot
+import requests
 
 from telebot import types
 from django.core.paginator import Paginator
@@ -6,7 +7,7 @@ from django.core.paginator import Paginator
 from .functions import get_or_create_user, add_state_user, change_customer_name, change_customer_phone,\
     validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop,\
     get_products_by_category, get_product_by_id, get_product_images, get_or_create_cart, get_or_create_cart_item,\
-    get_cart_item_by_id, get_cart_items, get_product_by_title, get_bot_url
+    get_cart_item_by_id, get_cart_items, get_product_by_title, get_bot_url, change_customer_address, create_order
 
 
 def start_message(message, bot):
@@ -16,6 +17,7 @@ def start_message(message, bot):
     }
 
     customer, new_customer = get_or_create_user(user_info)
+    add_state_user(message.from_user.id)
 
     if new_customer:
         bot.send_message(message.chat.id,
@@ -359,11 +361,11 @@ def new_order_delivery(obj, bot, confirmed=False):
 
     add_state_user(user_id, 'new_order_delivery')
 
-    if user.city and user.address and user.post_number:
+    if user.city and user.address:
         bot.send_message(chat_id=user_id,
                          text=f'У Вас вже встановлена адреса доставки. '
                               f'Виберіть нову у формі пошуку нижче чи підтвердіть поточну.\n'
-                              f'Зараз: {user.city} {user.address} {user.post_number}',
+                              f'Зараз: {user.address}, {user.city} ',
                          reply_markup=order_keyboard(info=True))
     else:
         bot.send_message(chat_id=user_id,
@@ -373,6 +375,86 @@ def new_order_delivery(obj, bot, confirmed=False):
     bot.send_message(obj.from_user.id,
                      f'Для пошука відділення Нової Пошти натисніть "Пошук" та введіть назву населенного пункту.',
                      reply_markup=search_keyboard())
+
+
+def new_order_finish(obj, bot, confirmed=False):
+    user_id = obj.from_user.id
+    user = get_user(user_id)
+    add_state_user(user_id, 'new_order_finish')
+
+    if not confirmed:
+        response = requests.post('http://api.novaposhta.ua/v2.0/json/AddressGeneral/getWarehouses', json={
+            "modelName": "Address",
+            "calledMethod": "getWarehouses",
+            "methodProperties": {
+                "Ref": obj.result_id
+            },
+            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
+        })
+
+        nova_poshta_post = response.json()['data']
+        change_customer_city(user_id, city=nova_poshta_post[0]['CityDescription'])
+
+        user = change_customer_address(user_id,
+                                       address=nova_poshta_post[0]['Description'],
+                                       post_number=nova_poshta_post[0]['Number'])
+
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    keyboard.add(types.InlineKeyboardButton('Підтвердити', callback_data='confirm_order'),
+                 types.InlineKeyboardButton('Змінити', callback_data='change_order_info'))
+
+    bot.send_message(user_id, 'Ми майже на фініші!', reply_markup=order_keyboard())
+    bot.send_message(user_id,
+                     f'Перевірте корректність данних для замовлення:\n'
+                     f'Ім\'я: {user.customer_name}\n'
+                     f'Номер телефону: {user.phone_number}\n'
+                     f'Адреса доставки: {user.address}, {user.city}',
+                     reply_markup=keyboard)
+
+
+def create_new_order(obj, bot):
+    user_id = obj.from_user.id
+    order = create_order(user_id)
+    add_state_user(user_id)
+
+    if order:
+        bot.send_message(user_id, f'Заказ №{order.pk} успішно створенний!', reply_markup=main_keyboard())
+
+
+def search_nova_poshta(search, query, bot):
+    inlines = []
+    response = requests.post('http://api.novaposhta.ua/v2.0/json/AddressGeneral/getWarehouses', json={
+            "modelName": "Address",
+            "calledMethod": "getWarehouses",
+            "methodProperties": {
+                "CityName": search
+            },
+            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
+        })
+
+    nova_poshta_posts = response.json()['data']
+    offset = int(query.offset) if query.offset else 0
+
+    for result in nova_poshta_posts:
+        inlines.append(types.InlineQueryResultArticle(
+            id=result['Ref'],
+            title=result['ShortAddress'],
+            description=result['Description'],
+            input_message_content=types.InputVenueMessageContent(
+                latitude=float(result['Latitude']),
+                longitude=float(result['Longitude']),
+                title=result['Description'],
+                address=result['ShortAddress']
+            )
+        ))
+
+    next_offset = f"{offset + 10}"
+    bot.answer_inline_query(
+        inline_query_id=query.id,
+        results=inlines[offset: offset + 10],
+        cache_time=0,
+        next_offset=next_offset
+    )
 
 
 def new_order_skip(obj, bot):
@@ -396,7 +478,7 @@ def show_search_button(message, bot):
                      reply_markup=search_keyboard())
 
 
-def search_inline(search, query, bot):
+def search_product(search, query, bot):
     inlines = []
     results = get_product_by_title(search)
     offset = int(query.offset) if query.offset else 0

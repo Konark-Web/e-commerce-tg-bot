@@ -2,8 +2,10 @@ import re
 
 from itertools import chain
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
+
 from .models import BotConfig
-from shop.models import Customer, Category, Shop, Product, ProductImage, Cart, CartItem
+from shop.models import Customer, Category, Shop, Product, ProductImage, Cart, CartItem, Order, OrderItem
 
 
 def get_bot_url():
@@ -53,6 +55,20 @@ def change_customer_city(user_id, city):
     try:
         user = Customer.objects.get(telegram_id=user_id)
         user.city = city
+        user.save()
+        return user
+    except Exception:
+        return None
+
+
+def change_customer_address(user_id, address, post_number=None):
+    try:
+        user = Customer.objects.get(telegram_id=user_id)
+        user.address = address
+
+        if post_number:
+            user.post_number = post_number
+
         user.save()
         return user
     except Exception:
@@ -133,6 +149,34 @@ def get_cart_item_by_id(item_id):
 
 def get_cart_items(cart_id):
     return CartItem.objects.filter(cart=cart_id, is_active=True)
+
+
+def create_order(user_id):
+    user = get_user(user_id)
+    cart = get_or_create_cart(user_id)[0]
+
+    with transaction.atomic():
+        order = Order.objects.create(customer=user,
+                                     customer_name=user.customer_name,
+                                     phone_number=user.phone_number,
+                                     city=user.city,
+                                     address=user.address,
+                                     post_number=user.post_number,
+                                     total=cart.get_subtotal[0],
+                                     status='processing')
+
+        cart_items = get_cart_items(cart.pk)
+        order_items = []
+        for item in cart_items:
+            order_items.append(OrderItem(order=order,
+                                         product=item.product,
+                                         price=item.product.price,
+                                         quantity=item.quantity))
+
+        OrderItem.objects.bulk_create(order_items)
+        cart_items.update(is_active=False)
+
+    return order
 
 
 def get_about_shop():

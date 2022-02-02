@@ -80,6 +80,24 @@ def text_msg(message):
             else:
                 dp.new_order_delivery(message, bot)
 
+        elif message.text and 'new_order_delivery' in user.state:
+            if message.text == '🚫 Відміна':
+                dp.new_order_skip(message, bot)
+            elif message.text == '🔙 Назад':
+                dp.new_order_phone(message, bot, confirmed=True)
+            elif message.text == '✅ Підтвердити':
+                dp.new_order_finish(message, bot, confirmed=True)
+            else:
+                dp.new_order_finish(message, bot)
+
+        elif message.text and 'new_order_finish' in user.state:
+            if message.text == '🚫 Відміна':
+                dp.new_order_skip(message, bot)
+            elif message.text == '🔙 Назад':
+                dp.new_order_delivery(message, bot, confirmed=True)
+            else:
+                dp.new_order_finish(message, bot, confirmed=True)
+
 
 @bot.message_handler(content_types=['contact'])
 def contact_msg(message):
@@ -133,6 +151,10 @@ def callback_handler(call: types.CallbackQuery):
         dp.show_cart(call, bot)
     elif 'new_order' in call.data:
         dp.new_order_customer_name(call, bot)
+    elif 'confirm_order' in call.data:
+        dp.create_new_order(call, bot)
+    elif 'change_order_info' in call.data:
+        dp.new_order_customer_name(call, bot)
 
 
 @bot.inline_handler(func=lambda query: True)
@@ -141,12 +163,18 @@ def query_text(query):
 
     if user.state is not None:
         if query.query and 'new_order_delivery' in user.state:
-            pass
+            dp.search_nova_poshta(query.query, query, bot)
     else:
-        dp.search_inline(query.query, query, bot)
+        dp.search_product(query.query, query, bot)
 
 
 @bot.chosen_inline_handler(func=lambda query: True)
 def inline_chosen(query):
-    dp.show_product(query, bot, product_id=query.result_id)
+    user = get_user(query.from_user.id)
+
+    if user.state is not None:
+        if query and 'new_order_delivery' in user.state:
+            dp.new_order_finish(query, bot)
+    else:
+        dp.show_product(query, bot, product_id=query.result_id)
 
