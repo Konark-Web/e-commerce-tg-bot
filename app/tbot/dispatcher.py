@@ -52,7 +52,7 @@ def reg_customer_city(message, bot):
     else:
         customer_phone = message.text
         if not validate_phone_number(customer_phone):
-            return bot.send_message(message.chat.id, 'Введіть корректний номер.')
+            return bot.send_message(message.from_user.id, 'Введіть корректний номер.')
 
     change_customer_phone(message.chat.id, customer_phone)
     add_state_user(message.chat.id, 'reg_customer_city')
@@ -324,7 +324,7 @@ def new_order_phone(obj, bot, confirmed=False):
     user = get_user(user_id)
 
     if not confirmed:
-        change_customer_name(user_id, obj.text)
+        user = change_customer_name(user_id, obj.text)
         bot.send_message(user_id, f'✅ Ім\'я успішно змінено на {user.customer_name}.')
 
     add_state_user(user_id, 'new_order_phone')
@@ -339,6 +339,40 @@ def new_order_phone(obj, bot, confirmed=False):
         bot.send_message(chat_id=user_id,
                          text=f'Введіть номер телефону або поширте його задопомогою кнопки нижче.',
                          reply_markup=order_keyboard(number=True))
+
+
+def new_order_delivery(obj, bot, confirmed=False):
+    user_id = obj.from_user.id
+    user = get_user(user_id)
+
+    if not confirmed:
+        # TODO: Refactor this part of code, duplicate (registration)
+        if obj.content_type == 'contact':
+            customer_phone = obj.contact.phone_number
+        else:
+            customer_phone = obj.text
+            if not validate_phone_number(customer_phone):
+                return bot.send_message(obj.from_user.id, 'Введіть корректний номер.')
+
+        user = change_customer_phone(user_id, customer_phone)
+        bot.send_message(user_id, f'✅ Номер телефону успішно змінено на {user.phone_number}.')
+
+    add_state_user(user_id, 'new_order_delivery')
+
+    if user.city and user.address and user.post_number:
+        bot.send_message(chat_id=user_id,
+                         text=f'У Вас вже встановлена адреса доставки. '
+                              f'Виберіть нову у формі пошуку нижче чи підтвердіть поточну.\n'
+                              f'Зараз: {user.city} {user.address} {user.post_number}',
+                         reply_markup=order_keyboard(info=True))
+    else:
+        bot.send_message(chat_id=user_id,
+                         text=f'Виберіть відділення Нової Пошти у формі пошуку нижче.',
+                         reply_markup=order_keyboard())
+
+    bot.send_message(obj.from_user.id,
+                     f'Для пошука відділення Нової Пошти натисніть "Пошук" та введіть назву населенного пункту.',
+                     reply_markup=search_keyboard())
 
 
 def new_order_skip(obj, bot):

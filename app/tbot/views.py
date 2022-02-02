@@ -70,6 +70,15 @@ def text_msg(message):
                 dp.new_order_phone(message, bot, confirmed=True)
             else:
                 dp.new_order_phone(message, bot)
+        elif message.text and 'new_order_phone' in user.state:
+            if message.text == '🚫 Відміна':
+                dp.new_order_skip(message, bot)
+            elif message.text == '🔙 Назад':
+                dp.new_order_customer_name(message, bot)
+            elif message.text == '✅ Підтвердити':
+                dp.new_order_delivery(message, bot, confirmed=True)
+            else:
+                dp.new_order_delivery(message, bot)
 
 
 @bot.message_handler(content_types=['contact'])
@@ -79,6 +88,8 @@ def contact_msg(message):
     if user.state is not None:
         if message.contact.phone_number and 'reg_customer_phone' in user.state:
             dp.reg_customer_city(message, bot)
+        elif message.contact.phone_number and 'new_order_phone' in user.state:
+            dp.new_order_delivery(message, bot)
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -126,7 +137,13 @@ def callback_handler(call: types.CallbackQuery):
 
 @bot.inline_handler(func=lambda query: True)
 def query_text(query):
-    dp.search_inline(query.query, query, bot)
+    user = get_user(query.from_user.id)
+
+    if user.state is not None:
+        if query.query and 'new_order_delivery' in user.state:
+            pass
+    else:
+        dp.search_inline(query.query, query, bot)
 
 
 @bot.chosen_inline_handler(func=lambda query: True)
