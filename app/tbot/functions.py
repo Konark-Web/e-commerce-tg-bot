@@ -225,7 +225,8 @@ def create_order(user_id):
             order_items.append(OrderItem(order=order,
                                          product=product,
                                          price=item.product.price,
-                                         quantity=item.quantity))
+                                         quantity=item.quantity,
+                                         total=item.product.price * item.quantity))
 
             product.quantity = product.quantity - item.quantity
             product.save()

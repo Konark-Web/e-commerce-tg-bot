@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Sum
+from django.core.exceptions import ValidationError
 
 
 class Customer(models.Model):
@@ -148,6 +148,19 @@ class Order(models.Model):
     total = models.FloatField('Загальна сума замовлення', default=0)
     status = models.CharField('Статус замовлення', max_length=25, null=False, choices=CHOICES)
 
+    def __str__(self):
+        return f'Замовлення №{self.pk}: {self.customer_name} ({self.total} грн.)'
+
+    def update_price(self):
+        order_items = OrderItem.objects.filter(order=self.pk)
+        total = 0
+
+        for order in order_items:
+            total += order.price
+
+        self.total = 5
+        self.save()
+
     class Meta:
         verbose_name = 'Замовлення'
         verbose_name_plural = 'Замовлення'
@@ -155,6 +168,48 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, verbose_name='Товар', null=True)
     price = models.FloatField('Ціна', null=False, default=0)
-    quantity = models.IntegerField('Кількість товару', null=False, default=0)
+    quantity = models.IntegerField('Кількість товару', null=False, default=0,
+                                   help_text='Коли даєте чи змінюєте замовлення, переконайтесь що товар є на складі')
+    total = models.FloatField('Загальна вартість', null=False, default=0)
+
+    def __init__(self, *args, **kwargs):
+        super(OrderItem, self).__init__(*args, **kwargs)
+        self.old_quantity = self.quantity
+
+    def __str__(self):
+        return f'{self.product.title} | Кількість: {self.quantity} | Сумма: {self.total}'
+
+    def change_order_total(self, old_total):
+        total_diff = self.total - old_total
+        self.order.total = self.order.total + total_diff
+        self.order.save()
+
+    def delete(self, *args, **kwargs):
+        self.order.total = self.order.total - self.total
+        self.order.save()
+
+        self.product.quantity = self.product.quantity + self.quantity
+        self.product.save()
+
+        super().delete(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        # TODO: Refactor it
+        old_total = self.total
+        if self.price and self.quantity:
+            self.total = self.quantity * self.price
+            self.product.quantity = self.product.quantity - (self.quantity - self.old_quantity)
+            self.product.save()
+
+        if not self.quantity and not self.price:
+            self.price = self.product.price
+            self.quantity = 1
+            self.total = self.price * self.quantity
+            self.product.quantity = self.product.quantity - 1
+            self.product.save()
+
+        self.change_order_total(old_total)
+
+        super().save(*args, **kwargs)
