@@ -1,14 +1,20 @@
 from django.contrib import admin
 from .models import Category, Customer, Shop, Product, ProductImage, Order, OrderItem
 
-
 admin.site.register(Shop)
+
+
+class OrderAdminInline(admin.StackedInline):
+    model = Order
+    extra = 0
+    show_change_link = True
 
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ('telegram_id', 'customer_name', 'phone_number', 'city', 'is_active')
     list_filter = ('city', 'is_active')
+    inlines = [OrderAdminInline]
 
 
 @admin.register(Category)
