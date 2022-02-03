@@ -7,7 +7,8 @@ from django.core.paginator import Paginator
 from .functions import get_or_create_user, add_state_user, change_customer_name, change_customer_phone,\
     validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop,\
     get_products_by_category, get_product_by_id, get_product_images, get_or_create_cart, get_or_create_cart_item,\
-    get_cart_item_by_id, get_cart_items, get_product_by_title, get_bot_url, change_customer_address, create_order
+    get_cart_item_by_id, get_cart_items, get_product_by_title, get_bot_url, change_customer_address, create_order,\
+    is_product_empty_by_item, has_user_empty_products, cart_total_changed, cart_quantity_changed
 
 
 def start_message(message, bot):
@@ -54,7 +55,7 @@ def reg_customer_city(message, bot):
     else:
         customer_phone = message.text
         if not validate_phone_number(customer_phone):
-            return bot.send_message(message.from_user.id, 'Введіть корректний номер.')
+            return bot.send_message(message.from_user.id, 'Введіть коректний номер.')
 
     change_customer_phone(message.chat.id, customer_phone)
     add_state_user(message.chat.id, 'reg_customer_city')
@@ -231,6 +232,22 @@ def remove_product_from_cart(obj, bot, item_id, is_cart=False):
                               reply_markup=subtotal_keyboard)
 
 
+def remove_empty_products(obj, bot):
+    cart = get_or_create_cart(obj.from_user.id)
+    cart_items = get_cart_items(cart[0].pk)
+    count = 0
+
+    for item in cart_items:
+        if is_product_empty_by_item(item):
+            item.is_active = False
+            item.save()
+
+            count += 1
+
+    bot.send_message(obj.from_user.id, f'Неактивні товари успішно видалені з корзини у кількості: {count}')
+    show_cart(obj, bot)
+
+
 def add_one_more_item(obj, bot, item_id, is_cart=False):
     cart_item = get_cart_item_by_id(item_id)
 
@@ -284,7 +301,8 @@ def show_cart(obj, bot):
                                           quantity=item_quantity,
                                           price=item_price,
                                           subtotal=item_subtotal,
-                                          is_cart=True)
+                                          is_cart=True,
+                                          item=item)
 
         if item.product.image:
             bot.send_photo(chat_id=obj.from_user.id,
@@ -303,9 +321,16 @@ def show_cart(obj, bot):
     cart.save()
 
 
-def new_order_customer_name(obj, bot):
+def new_order_customer_name(obj, bot, need_change=False):
     user_id = obj.from_user.id
     user = get_user(user_id)
+
+    if cart_changed(obj, bot):
+        return
+
+    if (user.customer_name and user.phone_number and user.address) and not need_change:
+        new_order_finish(obj, bot, True, True)
+        return
 
     bot.send_message(obj.from_user.id, 'Давайте почнемо оформлювати замовлення.')
     add_state_user(user_id, 'new_order_customer_name')
@@ -354,7 +379,7 @@ def new_order_delivery(obj, bot, confirmed=False):
         else:
             customer_phone = obj.text
             if not validate_phone_number(customer_phone):
-                return bot.send_message(obj.from_user.id, 'Введіть корректний номер.')
+                return bot.send_message(obj.from_user.id, 'Введіть коректний номер.')
 
         user = change_customer_phone(user_id, customer_phone)
         bot.send_message(user_id, f'✅ Номер телефону успішно змінено на {user.phone_number}.')
@@ -377,7 +402,7 @@ def new_order_delivery(obj, bot, confirmed=False):
                      reply_markup=search_keyboard())
 
 
-def new_order_finish(obj, bot, confirmed=False):
+def new_order_finish(obj, bot, confirmed=False, from_cart=False):
     user_id = obj.from_user.id
     user = get_user(user_id)
     add_state_user(user_id, 'new_order_finish')
@@ -403,9 +428,13 @@ def new_order_finish(obj, bot, confirmed=False):
     keyboard.add(types.InlineKeyboardButton('Підтвердити', callback_data='confirm_order'),
                  types.InlineKeyboardButton('Змінити', callback_data='change_order_info'))
 
-    bot.send_message(user_id, 'Ми майже на фініші!', reply_markup=order_keyboard())
+    if from_cart:
+        bot.send_message(user_id, 'Останній крок.', reply_markup=back_to_cart_keyboard())
+    else:
+        bot.send_message(user_id, 'Ми вже на фініші.', reply_markup=order_keyboard())
+
     bot.send_message(user_id,
-                     f'Перевірте корректність данних для замовлення:\n'
+                     f'Перевірте коректність данних для замовлення:\n'
                      f'Ім\'я: {user.customer_name}\n'
                      f'Номер телефону: {user.phone_number}\n'
                      f'Адреса доставки: {user.address}, {user.city}',
@@ -414,9 +443,12 @@ def new_order_finish(obj, bot, confirmed=False):
 
 def create_new_order(obj, bot):
     user_id = obj.from_user.id
-    order = create_order(user_id)
     add_state_user(user_id)
 
+    if cart_changed(obj, bot):
+        return
+
+    order = create_order(user_id)
     if order:
         bot.send_message(user_id, f'Заказ №{order.pk} успішно створенний!', reply_markup=main_keyboard())
 
@@ -594,6 +626,14 @@ def item_control_with_cart_keyboard(item_cart_id):
     return keyboard
 
 
+def back_to_cart_keyboard():
+    keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True, one_time_keyboard=True)
+
+    keyboard.add(types.KeyboardButton('🛒 Повернутися до корзини'))
+
+    return keyboard
+
+
 def back_to_main_keyboard():
     keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True, one_time_keyboard=True)
 
@@ -603,12 +643,23 @@ def back_to_main_keyboard():
 
 
 # Temp function
-def get_cart_item_text(product_title, quantity=None, price=None, subtotal=None, is_cart=False, only_added=False):
+def get_cart_item_text(product_title,
+                       quantity=None,
+                       price=None,
+                       subtotal=None,
+                       is_cart=False,
+                       only_added=False,
+                       item=None):
     if is_cart:
         message_text = f'<b>{product_title}</b>\n\n' \
                        f'Кількість: {quantity}\n' \
                        f'Ціна за ед.: {price}\n' \
                        f'Загальная ціна: {subtotal}\n'
+
+        if item and is_product_empty_by_item(item):
+            message_text += '\n<b>Нажаль, товару немає у наявності. Перед оформленням замовлення,' \
+                            ' будь-ласка видаліть цей товар з корзини.</b>'
+
     else:
         message_text = f'<b>Товар {product_title} доданий у корзину.</b>'
 
@@ -655,14 +706,49 @@ def get_item_text_and_keyboard(obj, bot, cart_item, is_cart):
 
 def get_subtotal_text_and_keyboard(cart):
     subtotal, quantity = cart.get_subtotal
+    product_empty = False
+
+    product_empty = has_user_empty_products(cart.customer.pk)
+
     if subtotal:
         subtotal_message = f'Загальная сума замовлення: {subtotal} грн.\n\n' \
                            f'Кількість товарів: {quantity}'
 
         keyboard = types.InlineKeyboardMarkup(row_width=1)
-        keyboard.add(types.InlineKeyboardButton('Зробити замовлення', callback_data='new_order'))
+        if not product_empty:
+            cart.total_price = subtotal
+            cart.save()
+
+            keyboard.add(types.InlineKeyboardButton('Зробити замовлення', callback_data='new_order'))
+        else:
+            keyboard.add(types.InlineKeyboardButton('Видалити неактуальні товари',
+                                                    callback_data='remove_empty_products'))
+            subtotal_message += '\n\n<b>Для того щоб почати оформлювати замовлення, видаліть з корзини ' \
+                                'товари яких немає у наявності.</b>'
     else:
         subtotal_message = 'Вже немає чого купувати. Додайте щось і ми продовжимо.'
         keyboard = None
 
     return subtotal_message, keyboard
+
+
+def cart_changed(obj, bot):
+    user_id = obj.from_user.id
+
+    if has_user_empty_products(user_id):
+        bot.send_message(obj.from_user.id, '⛔ Вибачте, ми не зможемо оформити замовлення. '
+                                           'Ви маєте товари в корзині яких немає в наявності')
+        show_cart(obj, bot)
+        return True
+
+    if cart_total_changed(user_id):
+        bot.send_message(obj.from_user.id, '⛔ Схоже ціни на товар змінилися, перевірте будь-ласка корзину.')
+        show_cart(obj, bot)
+        return True
+
+    if cart_quantity_changed(user_id):
+        bot.send_message(obj.from_user.id, '⛔ Схоже кількість наявних товарів змінилась, перевірте будь-ласка корзину.')
+        show_cart(obj, bot)
+        return True
+
+    return False

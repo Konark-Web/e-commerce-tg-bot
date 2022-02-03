@@ -74,7 +74,7 @@ def text_msg(message):
             if message.text == '🚫 Відміна':
                 dp.new_order_skip(message, bot)
             elif message.text == '🔙 Назад':
-                dp.new_order_customer_name(message, bot)
+                dp.new_order_customer_name(message, bot, need_change=True)
             elif message.text == '✅ Підтвердити':
                 dp.new_order_delivery(message, bot, confirmed=True)
             else:
@@ -91,7 +91,7 @@ def text_msg(message):
                 dp.new_order_finish(message, bot)
 
         elif message.text and 'new_order_finish' in user.state:
-            if message.text == '🚫 Відміна':
+            if message.text == '🚫 Відміна' or message.text == '🛒 Повернутися до корзини':
                 dp.new_order_skip(message, bot)
             elif message.text == '🔙 Назад':
                 dp.new_order_delivery(message, bot, confirmed=True)
@@ -154,7 +154,9 @@ def callback_handler(call: types.CallbackQuery):
     elif 'confirm_order' in call.data:
         dp.create_new_order(call, bot)
     elif 'change_order_info' in call.data:
-        dp.new_order_customer_name(call, bot)
+        dp.new_order_customer_name(call, bot, need_change=True)
+    elif 'remove_empty_products' in call.data:
+        dp.remove_empty_products(call, bot)
 
 
 @bot.inline_handler(func=lambda query: True)

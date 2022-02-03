@@ -102,12 +102,13 @@ class ProductImage(models.Model):
 
 class Cart(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='Клієнт', related_name='cart')
+    total_price = models.FloatField(default=0)
     total_message_id = models.CharField(max_length=200, null=True, editable=False)
     completed = models.BooleanField(default=False)
 
     @property
     def get_subtotal(self):
-        active_items = CartItem.objects.filter(cart=self.pk, is_active=True)
+        active_items = CartItem.objects.filter(cart=self.pk, is_active=True, product__quantity__gt=0)
         total_price = 0
         quantity = 0
 
