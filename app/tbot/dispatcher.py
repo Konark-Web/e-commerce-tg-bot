@@ -54,12 +54,9 @@ def reg_customer_phone(message, bot):
 
 
 def reg_customer_city(message, bot):
-    if message.content_type == 'contact':
-        customer_phone = message.contact.phone_number
-    else:
-        customer_phone = message.text
-        if not validate_phone_number(customer_phone):
-            return bot.send_message(message.from_user.id, 'Введіть коректний номер.')
+    customer_phone = get_phone_number(message, bot)
+    if not customer_phone:
+        return
 
     change_customer_phone(message.from_user.id, customer_phone)
     add_state_user(message.from_user.id, 'reg_customer_city')
@@ -295,10 +292,6 @@ def show_cart(obj, bot):
     cart, new_cart = get_or_create_cart(obj.from_user.id)
     cart_items = get_cart_items(cart)
 
-    # TODO: Make pagination for cart
-    # paginator = Paginator(cart_items, 5)
-    # items_per_page = paginator.get_page(page_num)
-
     if not cart_items:
         bot.send_message(obj.from_user.id, 'Нажаль, корзина поки що порожня.')
         return
@@ -385,13 +378,9 @@ def new_order_delivery(obj, bot, confirmed=False):
     user = get_user(user_id)
 
     if not confirmed:
-        # TODO: Refactor this part of code, duplicate (registration)
-        if obj.content_type == 'contact':
-            customer_phone = obj.contact.phone_number
-        else:
-            customer_phone = obj.text
-            if not validate_phone_number(customer_phone):
-                return bot.send_message(obj.from_user.id, 'Введіть коректний номер.')
+        customer_phone = get_phone_number(obj, bot)
+        if not customer_phone:
+            return
 
         user = change_customer_phone(user_id, customer_phone)
         bot.send_message(user_id, f'✅ Номер телефону успішно змінено на {user.phone_number}.')
@@ -729,3 +718,16 @@ def cart_changed(obj, bot):
         return True
 
     return False
+
+
+def get_phone_number(obj, bot):
+    customer_phone = None
+    if obj.content_type == 'contact':
+        customer_phone = obj.contact.phone_number
+    else:
+        if not validate_phone_number(obj.text):
+            return bot.send_message(obj.from_user.id, 'Введіть коректний номер.')
+
+        customer_phone = obj.text
+
+    return customer_phone

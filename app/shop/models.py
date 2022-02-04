@@ -177,12 +177,27 @@ class OrderItem(models.Model):
     def __init__(self, *args, **kwargs):
         super(OrderItem, self).__init__(*args, **kwargs)
         self.old_quantity = self.quantity
+        self.old_total = self.total
 
     def __str__(self):
         return f'{self.product.title} | Кількість: {self.quantity} | Сумма: {self.total}'
 
-    def change_order_total(self, old_total):
-        total_diff = self.total - old_total
+    def changed_price_or_quantity(self):
+        if self.price and self.quantity:
+            self.total = self.quantity * self.price
+            self.product.quantity = self.product.quantity - (self.quantity - self.old_quantity)
+            self.product.save()
+
+    def add_new_cart_item(self):
+        if not self.quantity and not self.price:
+            self.price = self.product.price
+            self.quantity = 1
+            self.total = self.price * self.quantity
+            self.product.quantity = self.product.quantity - 1
+            self.product.save()
+
+    def change_order_total(self):
+        total_diff = self.total - self.old_total
         self.order.total = self.order.total + total_diff
         self.order.save()
 
@@ -196,20 +211,8 @@ class OrderItem(models.Model):
         super().delete(*args, **kwargs)
 
     def save(self, *args, **kwargs):
-        # TODO: Refactor it
-        old_total = self.total
-        if self.price and self.quantity:
-            self.total = self.quantity * self.price
-            self.product.quantity = self.product.quantity - (self.quantity - self.old_quantity)
-            self.product.save()
-
-        if not self.quantity and not self.price:
-            self.price = self.product.price
-            self.quantity = 1
-            self.total = self.price * self.quantity
-            self.product.quantity = self.product.quantity - 1
-            self.product.save()
-
-        self.change_order_total(old_total)
+        self.changed_price_or_quantity()
+        self.add_new_cart_item()
+        self.change_order_total()
 
         super().save(*args, **kwargs)
