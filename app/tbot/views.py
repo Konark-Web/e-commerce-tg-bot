@@ -169,7 +169,6 @@ def query_text(query):
             dp.search_nova_poshta(query.query, query, bot)
         elif query and 'reg_customer_city' in user.state:
             dp.search_city(query.query, query, bot)
-
     else:
         dp.search_product(query.query, query, bot)
 

@@ -32,7 +32,7 @@ def start_message(message, bot):
         bot.send_message(message.from_user.id,
                          'Вітаємо!\n\n'
                          'Вас вітає магазин кальянних аксесуарів. '
-                         'В нас ви зможете купити все для комфортного проведення часу.\n\n'
+                         'У нас Ви зможете купити все для комфортного проведення часу.\n\n'
                          'Давайте пройдемо коротку реєстрацію, але Ви можете її пропустити.',
                          reply_markup=kb.registration_keyboard())
     else:
@@ -66,20 +66,21 @@ def reg_customer_city(message, bot):
 
     change_customer_phone(message.from_user.id, customer_phone)
     add_state_user(message.from_user.id, 'reg_customer_city')
-    bot.send_message(message.from_user.id, 'Виберіть з списку своє місто.', reply_markup=kb.skip_keyboard())
+    bot.send_message(message.from_user.id, 'Введіть або виберіть з списку своє місто.', reply_markup=kb.skip_keyboard())
     bot.send_message(message.from_user.id,
-                     f'Для пошука міста натисніть "Пошук" та введіть назву населенного пункту.',
+                     f'Для пошуку міста натисніть "Пошук" та введіть назву населенного пункту.',
                      reply_markup=kb.search_keyboard())
 
 
 def reg_customer_finish(message, bot):
     user_id = message.from_user.id
-    if not message.result_id:
-        bot.send_message(user_id, 'Виберіть місто в пошуку.')
-        return
+    if message.result_id:
+        customer_city = message.result_id.split('|')[-1]
+    else:
+        customer_city = message.text
 
     user = get_user_by_id(user_id)
-    change_customer_city(user_id, message.result_id)
+    change_customer_city(user_id, customer_city)
     add_state_user(user_id)
 
     bot.send_message(user_id, f'Дякую за реєстрацію, {user.customer_name}!\n\n'
@@ -163,7 +164,7 @@ def show_products_list(obj, bot, category_id, page_num=1):
 def show_product(obj, bot, product_id, img_num=1):
     keyboard = types.InlineKeyboardMarkup(row_width=2)
 
-    product = get_product_by_id(product_id)
+    product = Product.objects.filter(pk=product_id)
     images = ProductImage.objects.filter(product__pk=product_id)
 
     product_images = list(
@@ -173,6 +174,7 @@ def show_product(obj, bot, product_id, img_num=1):
         )
     )
 
+    product = product[0]
     paginator = Paginator(product_images, 1)
     product_image = paginator.get_page(img_num)
 
@@ -430,13 +432,13 @@ def new_order_finish(obj, bot, confirmed=False, from_cart=False):
     add_state_user(user_id, 'new_order_finish')
 
     if not confirmed:
-        response = requests.post('http://api.novaposhta.ua/v2.0/json/', json={
+        response = requests.post('https://api.novaposhta.ua/v2.0/json/', json={
             "modelName": "Address",
             "calledMethod": "getWarehouses",
             "methodProperties": {
                 "Ref": obj.result_id
             },
-            "apiKey": get_nova_poshta_api()
+            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
         })
 
         nova_poshta_post = response.json()['data']
@@ -477,13 +479,13 @@ def create_new_order(obj, bot):
 
 def search_nova_poshta(search, query, bot):
     inlines = []
-    response = requests.post('http://api.novaposhta.ua/v2.0/json/', json={
+    response = requests.post('https://api.novaposhta.ua/v2.0/json/', json={
             "modelName": "Address",
             "calledMethod": "getWarehouses",
             "methodProperties": {
                 "CityName": search
             },
-            "apiKey": get_nova_poshta_api()
+            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
         })
 
     nova_poshta_posts = response.json()['data']
@@ -513,23 +515,25 @@ def search_nova_poshta(search, query, bot):
 
 def search_city(search, query, bot):
     inlines = []
-    response = requests.post('http://api.novaposhta.ua/v2.0/json/', json={
+    response = requests.post('https://api.novaposhta.ua/v2.0/json/', json={
             "modelName": "AddressGeneral",
             "calledMethod": "getSettlements",
             "methodProperties": {
-                "FindByString": search,
-                "Warehouse": 0
+                "FindByString": search
             },
-            "apiKey": get_nova_poshta_api()
+            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
         })
 
     cities = response.json()['data']
     offset = int(query.offset) if query.offset else 0
 
     for result in cities:
+        title = f'{result["Description"]} ({result["SettlementTypeDescription"]})'
+        description = f'{result["RegionsDescription"]}, {result["AreaDescription"]}'
         inlines.append(types.InlineQueryResultArticle(
-            id=result['Description'],
-            title=f'{result["Description"]}, {result["AreaDescription"]}',
+            id=f'{result["Ref"]}|{result["Description"]}',
+            title=title,
+            description=description,
             input_message_content=types.InputVenueMessageContent(
                 latitude=float(result['Latitude']),
                 longitude=float(result['Longitude']),
@@ -746,8 +750,8 @@ def get_phone_number(obj, bot):
         customer_phone = obj.contact.phone_number
     else:
         if not validate_phone_number(obj.text):
-            return bot.send_message(obj.from_user.id, 'Введіть коректний номер.')
-
-        customer_phone = obj.text
+            bot.send_message(obj.from_user.id, 'Введіть коректний номер.')
+        else:
+            customer_phone = obj.text
 
     return customer_phone

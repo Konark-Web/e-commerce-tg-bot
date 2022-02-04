@@ -41,19 +41,15 @@ def cart_total_changed(user_id):
 
 def cart_quantity_changed(user_id):
     cart = get_or_create_cart(user_id)[0]
-    cart_subtotal = cart.get_subtotal[1]
     cart_items = get_cart_items(cart.pk)
-    total_quantity = 0
+    changed = False
 
     for item in cart_items:
-        total_quantity += item.product.quantity
         if item.quantity > item.product.quantity:
             equate_item_quantity_to_product(item)
+            changed = True
 
-    if total_quantity != cart_subtotal:
-        return True
-
-    return False
+    return changed
 
 
 def equate_item_quantity_to_product(item):
