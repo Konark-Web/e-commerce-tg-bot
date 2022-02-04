@@ -170,6 +170,9 @@ def query_text(query):
     if user.state is not None:
         if query.query and 'new_order_delivery' in user.state:
             dp.search_nova_poshta(query.query, query, bot)
+        elif query and 'reg_customer_city' in user.state:
+            dp.search_city(query.query, query, bot)
+
     else:
         dp.search_product(query.query, query, bot)
 
@@ -181,6 +184,8 @@ def inline_chosen(query):
     if user.state is not None:
         if query and 'new_order_delivery' in user.state:
             dp.new_order_finish(query, bot)
+        elif query and 'reg_customer_city' in user.state:
+            dp.reg_customer_finish(query, bot)
     else:
         dp.show_product(query, bot, product_id=query.result_id)
 

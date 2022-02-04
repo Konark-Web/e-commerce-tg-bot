@@ -104,7 +104,6 @@ class Cart(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='Клієнт', related_name='cart')
     total_price = models.FloatField(default=0)
     total_message_id = models.CharField(max_length=200, null=True, editable=False)
-    completed = models.BooleanField(default=False)
 
     @property
     def get_subtotal(self):

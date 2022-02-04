@@ -14,7 +14,7 @@ from .functions import get_or_create_user, add_state_user, change_customer_name,
 
 def start_message(message, bot):
     user_info = {
-        'telegram_id': message.chat.id,
+        'telegram_id': message.from_user.id,
         'username': message.from_user.username,
     }
 
@@ -22,14 +22,14 @@ def start_message(message, bot):
     add_state_user(message.from_user.id)
 
     if new_customer:
-        bot.send_message(message.chat.id,
+        bot.send_message(message.from_user.id,
                          'Вітаємо!\n\n'
                          'Вас вітає магазин кальянних аксесуарів. '
                          'В нас ви зможете купити все для комфортного проведення часу.\n\n'
                          'Давайте пройдемо коротку реєстрацію, але Ви можете її пропустити.',
                          reply_markup=registration_keyboard())
     else:
-        bot.send_message(message.chat.id,
+        bot.send_message(message.from_user.id,
                          '<b>Ви перейшли до головного меню.</b>\n\n'
                          '🛍 Каталог - пошук та купівля товару\n'
                          '🛒 Корзина - оформлення замовлень\n'
@@ -60,15 +60,23 @@ def reg_customer_city(message, bot):
 
     change_customer_phone(message.chat.id, customer_phone)
     add_state_user(message.chat.id, 'reg_customer_city')
-    bot.send_message(message.chat.id, 'Введіть Ваше місто.', reply_markup=skip_keyboard())
+    bot.send_message(message.chat.id, 'Виберіть з списку своє місто.', reply_markup=skip_keyboard())
+    bot.send_message(message.from_user.id,
+                     f'Для пошука міста натисніть "Пошук" та введіть назву населенного пункту.',
+                     reply_markup=search_keyboard())
 
 
 def reg_customer_finish(message, bot):
-    user = get_user(message.chat.id)
-    change_customer_city(message.chat.id, message.text)
-    add_state_user(message.chat.id)
+    user_id = message.from_user.id
+    if not message.result_id:
+        bot.send_message(user_id, 'Виберіть місто в пошуку.')
+        return
 
-    bot.send_message(message.chat.id, f'Дякую за реєстрацію, {user.customer_name}!\n\n'
+    user = get_user(user_id)
+    change_customer_city(user_id, message.result_id)
+    add_state_user(user_id)
+
+    bot.send_message(user_id, f'Дякую за реєстрацію, {user.customer_name}!\n\n'
                                       f'Тепер Ви можете перейти до покупок.')
     start_message(message, bot)
 
@@ -409,7 +417,7 @@ def new_order_finish(obj, bot, confirmed=False, from_cart=False):
     add_state_user(user_id, 'new_order_finish')
 
     if not confirmed:
-        response = requests.post('http://api.novaposhta.ua/v2.0/json/AddressGeneral/getWarehouses', json={
+        response = requests.post('http://api.novaposhta.ua/v2.0/json/', json={
             "modelName": "Address",
             "calledMethod": "getWarehouses",
             "methodProperties": {
@@ -456,7 +464,7 @@ def create_new_order(obj, bot):
 
 def search_nova_poshta(search, query, bot):
     inlines = []
-    response = requests.post('http://api.novaposhta.ua/v2.0/json/AddressGeneral/getWarehouses', json={
+    response = requests.post('http://api.novaposhta.ua/v2.0/json/', json={
             "modelName": "Address",
             "calledMethod": "getWarehouses",
             "methodProperties": {
@@ -478,6 +486,42 @@ def search_nova_poshta(search, query, bot):
                 longitude=float(result['Longitude']),
                 title=result['Description'],
                 address=result['ShortAddress']
+            )
+        ))
+
+    next_offset = f"{offset + 10}"
+    bot.answer_inline_query(
+        inline_query_id=query.id,
+        results=inlines[offset: offset + 10],
+        cache_time=0,
+        next_offset=next_offset
+    )
+
+
+def search_city(search, query, bot):
+    inlines = []
+    response = requests.post('http://api.novaposhta.ua/v2.0/json/', json={
+            "modelName": "AddressGeneral",
+            "calledMethod": "getSettlements",
+            "methodProperties": {
+                "FindByString": search,
+                "Warehouse": 0
+            },
+            "apiKey": get_nova_poshta_api()
+        })
+
+    cities = response.json()['data']
+    offset = int(query.offset) if query.offset else 0
+
+    for result in cities:
+        inlines.append(types.InlineQueryResultArticle(
+            id=result['Description'],
+            title=f'{result["Description"]}, {result["AreaDescription"]}',
+            input_message_content=types.InputVenueMessageContent(
+                latitude=float(result['Latitude']),
+                longitude=float(result['Longitude']),
+                title=result['Description'],
+                address=f'{result["Description"]}, {result["AreaDescription"]}'
             )
         ))
 

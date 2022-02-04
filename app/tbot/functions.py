@@ -149,7 +149,7 @@ def has_user_empty_products(user_id):
 
 
 def get_or_create_cart(user_id):
-    cart, new_cart = Cart.objects.get_or_create(customer_id=user_id, completed=False)
+    cart, new_cart = Cart.objects.get_or_create(customer_id=user_id)
 
     return cart, new_cart
 
