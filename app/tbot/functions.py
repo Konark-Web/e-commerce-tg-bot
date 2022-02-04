@@ -12,6 +12,10 @@ def get_bot_url():
     return BotConfig.objects.filter(is_active=True).first().server_url
 
 
+def get_nova_poshta_api():
+    return BotConfig.objects.filter(is_active=True).frist().nova_poshta_api
+
+
 def get_or_create_user(kwargs):
     customer, new_customer = Customer.objects.get_or_create(
         telegram_id=kwargs['telegram_id'],
@@ -236,6 +240,14 @@ def create_order(user_id):
         cart.update(total_price=0)
 
     return order
+
+
+def get_orders_by_user_id(user_id):
+    return Order.objects.filter(customer=user_id)
+
+
+def get_item_orders_by_order_id(order_id):
+    return OrderItem.objects.filter(order=order_id)
 
 
 def get_about_shop():

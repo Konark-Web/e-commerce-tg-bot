@@ -42,6 +42,8 @@ def text_msg(message):
         dp.show_cart(message, bot)
     elif message.text == 'ℹ️ Про магазин':
         dp.show_about_shop(message, bot)
+    elif message.text == '👤 Мої замовлення':
+        dp.show_user_orders(message, bot)
     elif message.text == '🔎 Пошук':
         dp.show_search_button(message, bot)
     elif message.text == '🔙 До головного меню':
@@ -157,6 +159,8 @@ def callback_handler(call: types.CallbackQuery):
         dp.new_order_customer_name(call, bot, need_change=True)
     elif 'remove_empty_products' in call.data:
         dp.remove_empty_products(call, bot)
+    elif 'orders_more' in call.data:
+        dp.show_user_orders(call, bot, page_num=call.data.split('|')[-1])
 
 
 @bot.inline_handler(func=lambda query: True)

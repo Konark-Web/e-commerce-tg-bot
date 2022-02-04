@@ -164,6 +164,7 @@ class Order(models.Model):
     class Meta:
         verbose_name = 'Замовлення'
         verbose_name_plural = 'Замовлення'
+        ordering = ('-id',)
 
 
 class OrderItem(models.Model):

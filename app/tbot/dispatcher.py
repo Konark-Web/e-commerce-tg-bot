@@ -8,7 +8,8 @@ from .functions import get_or_create_user, add_state_user, change_customer_name,
     validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop,\
     get_products_by_category, get_product_by_id, get_product_images, get_or_create_cart, get_or_create_cart_item,\
     get_cart_item_by_id, get_cart_items, get_product_by_title, get_bot_url, change_customer_address, create_order,\
-    is_product_empty_by_item, has_user_empty_products, cart_total_changed, cart_quantity_changed
+    is_product_empty_by_item, has_user_empty_products, cart_total_changed, cart_quantity_changed, get_nova_poshta_api,\
+    get_orders_by_user_id, get_item_orders_by_order_id
 
 
 def start_message(message, bot):
@@ -414,7 +415,7 @@ def new_order_finish(obj, bot, confirmed=False, from_cart=False):
             "methodProperties": {
                 "Ref": obj.result_id
             },
-            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
+            "apiKey": get_nova_poshta_api()
         })
 
         nova_poshta_post = response.json()['data']
@@ -461,7 +462,7 @@ def search_nova_poshta(search, query, bot):
             "methodProperties": {
                 "CityName": search
             },
-            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
+            "apiKey": get_nova_poshta_api()
         })
 
     nova_poshta_posts = response.json()['data']
@@ -492,6 +493,42 @@ def search_nova_poshta(search, query, bot):
 def new_order_skip(obj, bot):
     add_state_user(user_id=obj.from_user.id)
     show_cart(obj, bot)
+
+
+def show_user_orders(obj, bot, page_num=1):
+    user_id = obj.from_user.id
+
+    orders = get_orders_by_user_id(user_id)
+    paginator = Paginator(orders, 5)
+    orders_per_page = paginator.get_page(page_num)
+
+    if not orders:
+        bot.send_message(obj.message.chat.id, 'Ви поки що не нічого не купили.', reply_markup=back_to_main_keyboard())
+        return
+
+    if page_num == 1:
+        bot.send_message(user_id, 'Список Ваших замовлень:', reply_markup=back_to_main_keyboard())
+
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+    for index, order in enumerate(orders_per_page, start=1):
+        order_items = get_item_orders_by_order_id(order.pk)
+        text_message = f'<b>Замовлення №{order.pk}</b>\n\n'
+
+        for index_item, order_item in enumerate(order_items, start=1):
+            text_message += f'{index_item}. {order_item.product.title}\n' \
+                            f'Сума: {order_item.total} ({order_item.price} x {order_item.quantity})\n'
+
+        text_message += f'\n\n<b>Загальна сума замовлення:</b> {order.total}'
+
+        if page_num != 1:
+            bot.edit_message_reply_markup(obj.message.chat.id, obj.message.message_id, reply_markup=keyboard)
+
+        if index == len(orders_per_page) and orders_per_page.has_next():
+            next_page = orders_per_page.next_page_number()
+            keyboard.add(types.InlineKeyboardButton('Загрузити більше замовлень',
+                                                    callback_data=f'orders_more|{next_page}'))
+
+        bot.send_message(user_id, text_message, reply_markup=keyboard)
 
 
 def show_about_shop(message, bot):
