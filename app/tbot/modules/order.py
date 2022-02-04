@@ -37,11 +37,3 @@ def create_order(user_id):
         cart.update(total_price=0)
 
     return order
-
-
-def get_orders_by_user_id(user_id):
-    return Order.objects.filter(customer=user_id)
-
-
-def get_item_orders_by_order_id(order_id):
-    return OrderItem.objects.filter(order=order_id)

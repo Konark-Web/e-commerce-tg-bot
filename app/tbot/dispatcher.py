@@ -1,19 +1,21 @@
 import requests
 
 from telebot import types
+from itertools import chain
 from django.core.paginator import Paginator
 
 from . import keyboards as kb
 from tbot.models import BotConfig
+from shop.models import Category, Product, ProductImage, Shop, Order, OrderItem
+
 from tbot.modules.customer import (get_or_create_user, add_state_user, change_customer_name,
                                    change_customer_phone, change_customer_city, change_customer_address,
                                    get_user_by_id)
-from tbot.modules.catalog import (get_categories, get_about_shop, get_products_by_category,
-                                  get_product_by_id, get_product_images, get_product_by_title)
+from tbot.modules.catalog import get_product_by_id
 from tbot.modules.cart import (get_or_create_cart, get_or_create_cart_item, get_cart_item_by_id,
                                get_cart_items, is_product_empty_by_item, has_user_empty_products,
                                cart_total_changed, cart_quantity_changed)
-from tbot.modules.order import (create_order, get_orders_by_user_id, get_item_orders_by_order_id)
+from tbot.modules.order import create_order
 from tbot.modules.additional_functions import validate_phone_number, get_nova_poshta_api
 
 
@@ -93,7 +95,7 @@ def registration_skip(message, bot):
 def show_catalog(obj, bot, page_num=1):
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     keyboard_page_btn = []
-    categories = get_categories()
+    categories = Category.objects.filter(is_active=True).distinct()
     paginator = Paginator(categories, 10)
     items_per_page = paginator.get_page(page_num)
 
@@ -117,7 +119,14 @@ def show_catalog(obj, bot, page_num=1):
 
 
 def show_products_list(obj, bot, category_id, page_num=1):
-    products = get_products_by_category(category_id)
+    products_stock = Product.objects.filter(category=category_id, quantity__gt=0, is_active=True).distinct()
+    products_out_of_stock = Product.objects.filter(category=category_id, quantity__lte=0, is_active=True).distinct()
+    products = list(
+        sorted(
+            chain(products_stock, products_out_of_stock),
+            key=lambda objects: objects.is_active
+        )
+    )
     paginator = Paginator(products, 5)
     products_per_page = paginator.get_page(page_num)
 
@@ -153,9 +162,17 @@ def show_products_list(obj, bot, category_id, page_num=1):
 
 def show_product(obj, bot, product_id, img_num=1):
     keyboard = types.InlineKeyboardMarkup(row_width=2)
-    product = get_product_by_id(product_id)
 
-    product_images = get_product_images(product_id)
+    product = get_product_by_id(product_id)
+    images = ProductImage.objects.filter(product__pk=product_id)
+
+    product_images = list(
+        sorted(
+            chain(product, images),
+            key=lambda objects: objects.pk
+        )
+    )
+
     paginator = Paginator(product_images, 1)
     product_image = paginator.get_page(img_num)
 
@@ -538,7 +555,7 @@ def new_order_skip(obj, bot):
 def show_user_orders(obj, bot, page_num=1):
     user_id = obj.from_user.id
 
-    orders = get_orders_by_user_id(user_id)
+    orders = Order.objects.filter(customer=user_id)
     paginator = Paginator(orders, 5)
     orders_per_page = paginator.get_page(page_num)
 
@@ -551,7 +568,7 @@ def show_user_orders(obj, bot, page_num=1):
 
     keyboard = types.InlineKeyboardMarkup(row_width=1)
     for index, order in enumerate(orders_per_page, start=1):
-        order_items = get_item_orders_by_order_id(order.pk)
+        order_items = OrderItem.objects.filter(order=order.pk)
         text_message = f'<b>Замовлення №{order.pk}</b>\n\n'
 
         for index_item, order_item in enumerate(order_items, start=1):
@@ -572,7 +589,7 @@ def show_user_orders(obj, bot, page_num=1):
 
 
 def show_about_shop(message, bot):
-    about = get_about_shop()
+    about = Shop.objects.filter(is_active=True).first().about
 
     if about:
         bot.send_message(message.from_user.id, about, reply_markup=kb.back_to_main_keyboard())
@@ -589,7 +606,7 @@ def show_search_button(message, bot):
 
 def search_product(search, query, bot):
     inlines = []
-    results = get_product_by_title(search)
+    results = Product.objects.filter(title__icontains=search, is_active=True)
     offset = int(query.offset) if query.offset else 0
     bot_url = BotConfig.objects.get(is_active=True).server_url
 
