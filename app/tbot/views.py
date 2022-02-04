@@ -1,14 +1,11 @@
-import telebot
-
 from telebot import types
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
-from django.shortcuts import render
 
 from . import dispatcher as dp
 from .bot import TBot
-from .functions import get_user
+from .modules.customer import get_user_by_id
 
 tBot = TBot()
 bot = tBot.get_bot()
@@ -32,7 +29,7 @@ def start_text(message):
 
 @bot.message_handler(content_types=['text'])
 def text_msg(message):
-    user = get_user(message.from_user.id)
+    user = get_user_by_id(message.from_user.id)
 
     if message.text == 'Зареєструватися':
         dp.reg_customer_name(message, bot)
@@ -103,7 +100,7 @@ def text_msg(message):
 
 @bot.message_handler(content_types=['contact'])
 def contact_msg(message):
-    user = get_user(message.from_user.id)
+    user = get_user_by_id(message.from_user.id)
 
     if user.state is not None:
         if message.contact.phone_number and 'reg_customer_phone' in user.state:
@@ -165,7 +162,7 @@ def callback_handler(call: types.CallbackQuery):
 
 @bot.inline_handler(func=lambda query: True)
 def query_text(query):
-    user = get_user(query.from_user.id)
+    user = get_user_by_id(query.from_user.id)
 
     if user.state is not None:
         if query.query and 'new_order_delivery' in user.state:
@@ -179,7 +176,7 @@ def query_text(query):
 
 @bot.chosen_inline_handler(func=lambda query: True)
 def inline_chosen(query):
-    user = get_user(query.from_user.id)
+    user = get_user_by_id(query.from_user.id)
 
     if user.state is not None:
         if query and 'new_order_delivery' in user.state:
@@ -188,4 +185,3 @@ def inline_chosen(query):
             dp.reg_customer_finish(query, bot)
     else:
         dp.show_product(query, bot, product_id=query.result_id)
-

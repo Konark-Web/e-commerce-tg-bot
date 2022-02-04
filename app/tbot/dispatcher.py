@@ -1,16 +1,20 @@
-import telebot
 import requests
 
 from telebot import types
 from django.core.paginator import Paginator
 
 from . import keyboards as kb
-from .functions import get_or_create_user, add_state_user, change_customer_name, change_customer_phone,\
-    validate_phone_number, change_customer_city, get_user, get_categories, get_about_shop,\
-    get_products_by_category, get_product_by_id, get_product_images, get_or_create_cart, get_or_create_cart_item,\
-    get_cart_item_by_id, get_cart_items, get_product_by_title, get_bot_url, change_customer_address, create_order,\
-    is_product_empty_by_item, has_user_empty_products, cart_total_changed, cart_quantity_changed, get_nova_poshta_api,\
-    get_orders_by_user_id, get_item_orders_by_order_id
+from tbot.models import BotConfig
+from tbot.modules.customer import (get_or_create_user, add_state_user, change_customer_name,
+                                   change_customer_phone, change_customer_city, change_customer_address,
+                                   get_user_by_id)
+from tbot.modules.catalog import (get_categories, get_about_shop, get_products_by_category,
+                                  get_product_by_id, get_product_images, get_product_by_title)
+from tbot.modules.cart import (get_or_create_cart, get_or_create_cart_item, get_cart_item_by_id,
+                               get_cart_items, is_product_empty_by_item, has_user_empty_products,
+                               cart_total_changed, cart_quantity_changed)
+from tbot.modules.order import (create_order, get_orders_by_user_id, get_item_orders_by_order_id)
+from tbot.modules.additional_functions import validate_phone_number, get_nova_poshta_api
 
 
 def start_message(message, bot):
@@ -72,12 +76,12 @@ def reg_customer_finish(message, bot):
         bot.send_message(user_id, 'Виберіть місто в пошуку.')
         return
 
-    user = get_user(user_id)
+    user = get_user_by_id(user_id)
     change_customer_city(user_id, message.result_id)
     add_state_user(user_id)
 
     bot.send_message(user_id, f'Дякую за реєстрацію, {user.customer_name}!\n\n'
-                                      f'Тепер Ви можете перейти до покупок.')
+                              f'Тепер Ви можете перейти до покупок.')
     start_message(message, bot)
 
 
@@ -186,7 +190,7 @@ def show_product(obj, bot, product_id, img_num=1):
         if img_num == 1:
             bot.send_photo(obj.from_user.id, product.image, product_text, reply_markup=keyboard)
         else:
-            bot.edit_message_media(types.InputMedia(type='photo',media=product_image[0].image),
+            bot.edit_message_media(types.InputMedia(type='photo', media=product_image[0].image),
                                    obj.from_user.id,
                                    obj.message.message_id,
                                    reply_markup=keyboard)
@@ -328,7 +332,7 @@ def show_cart(obj, bot):
 
 def new_order_customer_name(obj, bot, need_change=False):
     user_id = obj.from_user.id
-    user = get_user(user_id)
+    user = get_user_by_id(user_id)
 
     if cart_changed(obj, bot):
         return
@@ -353,7 +357,7 @@ def new_order_customer_name(obj, bot, need_change=False):
 
 def new_order_phone(obj, bot, confirmed=False):
     user_id = obj.from_user.id
-    user = get_user(user_id)
+    user = get_user_by_id(user_id)
 
     if not confirmed:
         user = change_customer_name(user_id, obj.text)
@@ -375,7 +379,7 @@ def new_order_phone(obj, bot, confirmed=False):
 
 def new_order_delivery(obj, bot, confirmed=False):
     user_id = obj.from_user.id
-    user = get_user(user_id)
+    user = get_user_by_id(user_id)
 
     if not confirmed:
         customer_phone = get_phone_number(obj, bot)
@@ -405,7 +409,7 @@ def new_order_delivery(obj, bot, confirmed=False):
 
 def new_order_finish(obj, bot, confirmed=False, from_cart=False):
     user_id = obj.from_user.id
-    user = get_user(user_id)
+    user = get_user_by_id(user_id)
     add_state_user(user_id, 'new_order_finish')
 
     if not confirmed:
@@ -587,13 +591,14 @@ def search_product(search, query, bot):
     inlines = []
     results = get_product_by_title(search)
     offset = int(query.offset) if query.offset else 0
+    bot_url = BotConfig.objects.get(is_active=True).server_url
 
     for result in results:
         inlines.append(types.InlineQueryResultArticle(
             id=result.pk,
             title=result.title,
             description=result.excerpt,
-            thumb_url=get_bot_url() + result.image.url,
+            thumb_url=bot_url + result.image.url,
             input_message_content=types.InputTextMessageContent(
                 message_text=f'Товар: {result.title}'
             )
@@ -608,7 +613,7 @@ def search_product(search, query, bot):
     )
 
 
-# Temp function
+# Additional functions
 def get_cart_item_text(product_title,
                        quantity=None,
                        price=None,
@@ -672,8 +677,6 @@ def get_item_text_and_keyboard(obj, bot, cart_item, is_cart):
 
 def get_subtotal_text_and_keyboard(cart):
     subtotal, quantity = cart.get_subtotal
-    product_empty = False
-
     product_empty = has_user_empty_products(cart.customer.pk)
 
     if subtotal:
