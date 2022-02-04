@@ -32,7 +32,7 @@ def start_text(message):
 
 @bot.message_handler(content_types=['text'])
 def text_msg(message):
-    user = get_user(message.chat.id)
+    user = get_user(message.from_user.id)
 
     if message.text == 'Зареєструватися':
         dp.reg_customer_name(message, bot)
@@ -103,7 +103,7 @@ def text_msg(message):
 
 @bot.message_handler(content_types=['contact'])
 def contact_msg(message):
-    user = get_user(message.chat.id)
+    user = get_user(message.from_user.id)
 
     if user.state is not None:
         if message.contact.phone_number and 'reg_customer_phone' in user.state:

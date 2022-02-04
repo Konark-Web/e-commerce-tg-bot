@@ -40,14 +40,14 @@ def start_message(message, bot):
 
 
 def reg_customer_name(message, bot):
-    add_state_user(message.chat.id, 'reg_customer_name')
-    bot.send_message(message.chat.id, 'Введіть ваш ПІБ', reply_markup=skip_keyboard())
+    add_state_user(message.from_user.id, 'reg_customer_name')
+    bot.send_message(message.from_user.id, 'Введіть ваш ПІБ', reply_markup=skip_keyboard())
 
 
 def reg_customer_phone(message, bot):
-    change_customer_name(message.chat.id, message.text)
-    add_state_user(message.chat.id, 'reg_customer_phone')
-    bot.send_message(message.chat.id, 'Введіть або розшарте ваш номер телефону.', reply_markup=number_keyboard())
+    change_customer_name(message.from_user.id, message.text)
+    add_state_user(message.from_user.id, 'reg_customer_phone')
+    bot.send_message(message.from_user.id, 'Введіть або розшарте ваш номер телефону.', reply_markup=number_keyboard())
 
 
 def reg_customer_city(message, bot):
@@ -58,9 +58,9 @@ def reg_customer_city(message, bot):
         if not validate_phone_number(customer_phone):
             return bot.send_message(message.from_user.id, 'Введіть коректний номер.')
 
-    change_customer_phone(message.chat.id, customer_phone)
-    add_state_user(message.chat.id, 'reg_customer_city')
-    bot.send_message(message.chat.id, 'Виберіть з списку своє місто.', reply_markup=skip_keyboard())
+    change_customer_phone(message.from_user.id, customer_phone)
+    add_state_user(message.from_user.id, 'reg_customer_city')
+    bot.send_message(message.from_user.id, 'Виберіть з списку своє місто.', reply_markup=skip_keyboard())
     bot.send_message(message.from_user.id,
                      f'Для пошука міста натисніть "Пошук" та введіть назву населенного пункту.',
                      reply_markup=search_keyboard())
@@ -82,7 +82,7 @@ def reg_customer_finish(message, bot):
 
 
 def registration_skip(message, bot):
-    add_state_user(message.chat.id)
+    add_state_user(message.from_user.id)
     start_message(message, bot)
 
 
@@ -109,7 +109,7 @@ def show_catalog(obj, bot, page_num=1):
     if page_num == 1:
         bot.send_message(obj.chat.id, 'Оберіть категорію яка Вас цікавить:', reply_markup=keyboard)
     else:
-        bot.edit_message_reply_markup(obj.message.chat.id, obj.message.message_id, reply_markup=keyboard)
+        bot.edit_message_reply_markup(obj.from_user.id, obj.message.message_id, reply_markup=keyboard)
 
 
 def show_products_list(obj, bot, category_id, page_num=1):
@@ -118,7 +118,7 @@ def show_products_list(obj, bot, category_id, page_num=1):
     products_per_page = paginator.get_page(page_num)
 
     if not products:
-        bot.send_message(obj.message.chat.id, 'Нажаль, активних товарів в цій категорії немає.')
+        bot.send_message(obj.from_user.id, 'Нажаль, активних товарів в цій категорії немає.')
         show_catalog(obj.message, bot)
 
     for index, product in enumerate(products_per_page, start=1):
@@ -134,7 +134,7 @@ def show_products_list(obj, bot, category_id, page_num=1):
         keyboard.add(types.InlineKeyboardButton('ℹ️ Подробиці', callback_data=f'product_item|{product.pk}'))
 
         if page_num != 1:
-            bot.edit_message_reply_markup(obj.message.chat.id, obj.message.message_id, reply_markup=keyboard)
+            bot.edit_message_reply_markup(obj.from_user.id, obj.message.message_id, reply_markup=keyboard)
 
         if index == len(products_per_page) and products_per_page.has_next():
             next_page = products_per_page.next_page_number()
@@ -142,9 +142,9 @@ def show_products_list(obj, bot, category_id, page_num=1):
                                                     callback_data=f'products_more|{product.category.pk}|{next_page}'))
 
         if product.image:
-            bot.send_photo(obj.message.chat.id, product.image, product_text, reply_markup=keyboard)
+            bot.send_photo(obj.from_user.id, product.image, product_text, reply_markup=keyboard)
         else:
-            bot.send_message(obj.message.chat.id, product_text, reply_markup=keyboard)
+            bot.send_message(obj.from_user.id, product_text, reply_markup=keyboard)
 
 
 def show_product(obj, bot, product_id, img_num=1):
@@ -199,7 +199,7 @@ def show_product(obj, bot, product_id, img_num=1):
 
 
 def hide_product(obj, bot):
-    bot.delete_message(obj.message.chat.id, obj.message.message_id)
+    bot.delete_message(obj.from_user.id, obj.message.message_id)
 
 
 def add_product_to_cart(obj, bot, product_id):
@@ -218,7 +218,7 @@ def add_product_to_cart(obj, bot, product_id):
                                       f'Додано ще 1 одиницю товару до корзини. Зараз у корзині: {cart_item.quantity}',
                                       show_alert=False)
     else:
-        bot.send_message(obj.message.chat.id,
+        bot.send_message(obj.from_user.id,
                          get_cart_item_text(product_title=product.title),
                          reply_markup=item_control_with_cart_keyboard(cart_item.pk))
 
@@ -228,7 +228,7 @@ def remove_product_from_cart(obj, bot, item_id, is_cart=False):
     cart_item.is_active = False
     cart_item.save()
 
-    bot.delete_message(obj.message.chat.id, obj.message.message_id)
+    bot.delete_message(obj.from_user.id, obj.message.message_id)
     bot.answer_callback_query(obj.id,
                               f'Товар успішно видалений с корзини.',
                               show_alert=False)
@@ -236,7 +236,7 @@ def remove_product_from_cart(obj, bot, item_id, is_cart=False):
     if is_cart:
         subtotal_message, subtotal_keyboard = get_subtotal_text_and_keyboard(cart_item.cart)
         bot.edit_message_text(text=subtotal_message,
-                              chat_id=obj.message.chat.id,
+                              chat_id=obj.from_user.id,
                               message_id=cart_item.cart.total_message_id,
                               reply_markup=subtotal_keyboard)
 
@@ -547,7 +547,7 @@ def show_user_orders(obj, bot, page_num=1):
     orders_per_page = paginator.get_page(page_num)
 
     if not orders:
-        bot.send_message(obj.message.chat.id, 'Ви поки що не нічого не купили.', reply_markup=back_to_main_keyboard())
+        bot.send_message(obj.from_user.id, 'Ви поки що не нічого не купили.', reply_markup=back_to_main_keyboard())
         return
 
     if page_num == 1:
@@ -565,7 +565,7 @@ def show_user_orders(obj, bot, page_num=1):
         text_message += f'\n\n<b>Загальна сума замовлення:</b> {order.total}'
 
         if page_num != 1:
-            bot.edit_message_reply_markup(obj.message.chat.id, obj.message.message_id, reply_markup=keyboard)
+            bot.edit_message_reply_markup(obj.from_user.id, obj.message.message_id, reply_markup=keyboard)
 
         if index == len(orders_per_page) and orders_per_page.has_next():
             next_page = orders_per_page.next_page_number()
@@ -579,9 +579,9 @@ def show_about_shop(message, bot):
     about = get_about_shop()
 
     if about:
-        bot.send_message(message.chat.id, about, reply_markup=back_to_main_keyboard())
+        bot.send_message(message.from_user.id, about, reply_markup=back_to_main_keyboard())
     else:
-        bot.send_message(message.chat.id, 'Нажаль, поки немає інформації про магазин.',
+        bot.send_message(message.from_user.id, 'Нажаль, поки немає інформації про магазин.',
                          reply_markup=back_to_main_keyboard())
 
 
@@ -751,6 +751,7 @@ def get_cart_item_text(product_title,
 
 
 def get_item_text_and_keyboard(obj, bot, cart_item, is_cart):
+    print(obj)
     if is_cart:
         item_quantity = cart_item.quantity
         item_price = cart_item.product.price
@@ -765,7 +766,7 @@ def get_item_text_and_keyboard(obj, bot, cart_item, is_cart):
 
         subtotal_message, subtotal_keyboard = get_subtotal_text_and_keyboard(cart_item.cart)
         bot.edit_message_text(text=subtotal_message,
-                              chat_id=obj.message.chat.id,
+                              chat_id=obj.from_user.id,
                               message_id=cart_item.cart.total_message_id,
                               reply_markup=subtotal_keyboard)
     else:
@@ -775,12 +776,12 @@ def get_item_text_and_keyboard(obj, bot, cart_item, is_cart):
 
     if obj.message.content_type == 'photo':
         bot.edit_message_caption(caption=text_message,
-                                 chat_id=obj.message.chat.id,
+                                 chat_id=obj.from_user.id,
                                  message_id=obj.message.message_id,
                                  reply_markup=keyboard)
     else:
         bot.edit_message_text(text=text_message,
-                              chat_id=obj.message.chat.id,
+                              chat_id=obj.from_user.id,
                               message_id=obj.message.message_id,
                               reply_markup=keyboard)
 
