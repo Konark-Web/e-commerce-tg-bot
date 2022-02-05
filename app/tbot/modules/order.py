@@ -34,6 +34,7 @@ def create_order(user_id):
 
         OrderItem.objects.bulk_create(order_items)
         cart_items.update(is_active=False)
-        cart.update(total_price=0)
+        cart.total_price = 0
+        cart.save()
 
     return order

@@ -131,6 +131,11 @@ def show_products_list(obj, bot, category_id, page_num=1):
     paginator = Paginator(products, 5)
     products_per_page = paginator.get_page(page_num)
 
+    category = Category.objects.filter(pk=category_id).first()
+    bot.send_message(obj.from_user.id,
+                     f'🛍 Каталог товарів з категорії <b>{category.name}</b>\n'
+                     f'Сторінка {products_per_page.number}/{products_per_page.paginator.num_pages}')
+
     if not products:
         bot.send_message(obj.from_user.id, 'Нажаль, активних товарів в цій категорії немає.')
         show_catalog(obj.message, bot)
@@ -315,6 +320,9 @@ def show_cart(obj, bot):
     cart, new_cart = get_or_create_cart(obj.from_user.id)
     cart_items = get_cart_items(cart)
 
+    if isinstance(obj, types.CallbackQuery):
+        bot.send_message(obj.from_user.id, '🛒 Корзина', reply_markup=kb.main_keyboard())
+
     if not cart_items:
         bot.send_message(obj.from_user.id, 'Нажаль, корзина поки що порожня.')
         return
@@ -366,7 +374,7 @@ def new_order_customer_name(obj, bot, need_change=False):
     if user.customer_name:
         bot.send_message(chat_id=user_id,
                          text=f'У Вас вже встановленне ім\'я. Введіть нове чи підтвердіть поточне.\n'
-                         f'Зараз: {user.customer_name}',
+                              f'Зараз: {user.customer_name}',
                          reply_markup=kb.order_keyboard(True))
     else:
         bot.send_message(chat_id=user_id,
@@ -387,18 +395,19 @@ def new_order_phone(obj, bot, confirmed=False):
     if user.phone_number:
         bot.send_message(chat_id=user_id,
                          text=f'У Вас вже встановленний номер телефону. '
-                              f'Введіть новий (або поширте задопомогою кнопки нижче) чи підтвердіть поточний.\n'
+                              f'Введіть новий (або поширте за допомогою кнопки нижче) чи підтвердіть поточний.\n'
                               f'Зараз: {user.phone_number}',
                          reply_markup=kb.order_keyboard(info=True, number=True))
     else:
         bot.send_message(chat_id=user_id,
-                         text=f'Введіть номер телефону або поширте його задопомогою кнопки нижче.',
+                         text=f'Введіть номер телефону або поширте його за допомогою кнопки нижче.',
                          reply_markup=kb.order_keyboard(number=True))
 
 
 def new_order_delivery(obj, bot, confirmed=False):
     user_id = obj.from_user.id
     user = get_user_by_id(user_id)
+    keyboard = kb.search_keyboard()
 
     if not confirmed:
         customer_phone = get_phone_number(obj, bot)
@@ -417,13 +426,17 @@ def new_order_delivery(obj, bot, confirmed=False):
                               f'Зараз: {user.address}, {user.city} ',
                          reply_markup=kb.order_keyboard(info=True))
     else:
+        if user.city:
+            keyboard = types.InlineKeyboardMarkup(row_width=1)
+            keyboard.add(types.InlineKeyboardButton('Пошук', switch_inline_query_current_chat=user.city))
+
         bot.send_message(chat_id=user_id,
                          text=f'Виберіть відділення Нової Пошти у формі пошуку нижче.',
                          reply_markup=kb.order_keyboard())
 
     bot.send_message(obj.from_user.id,
-                     f'Для пошука відділення Нової Пошти натисніть "Пошук" та введіть назву населенного пункту.',
-                     reply_markup=kb.search_keyboard())
+                     f'Для пошуку відділення Нової Пошти натисніть "Пошук" та введіть назву населенного пункту.',
+                     reply_markup=keyboard)
 
 
 def new_order_finish(obj, bot, confirmed=False, from_cart=False):
@@ -438,7 +451,7 @@ def new_order_finish(obj, bot, confirmed=False, from_cart=False):
             "methodProperties": {
                 "Ref": obj.result_id
             },
-            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
+            "apiKey": get_nova_poshta_api()
         })
 
         nova_poshta_post = response.json()['data']
@@ -480,13 +493,13 @@ def create_new_order(obj, bot):
 def search_nova_poshta(search, query, bot):
     inlines = []
     response = requests.post('https://api.novaposhta.ua/v2.0/json/', json={
-            "modelName": "Address",
-            "calledMethod": "getWarehouses",
-            "methodProperties": {
-                "CityName": search
-            },
-            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
-        })
+        "modelName": "Address",
+        "calledMethod": "getWarehouses",
+        "methodProperties": {
+            "CityName": search
+        },
+        "apiKey": get_nova_poshta_api()
+    })
 
     nova_poshta_posts = response.json()['data']
     offset = int(query.offset) if query.offset else 0
@@ -516,20 +529,25 @@ def search_nova_poshta(search, query, bot):
 def search_city(search, query, bot):
     inlines = []
     response = requests.post('https://api.novaposhta.ua/v2.0/json/', json={
-            "modelName": "AddressGeneral",
-            "calledMethod": "getSettlements",
-            "methodProperties": {
-                "FindByString": search
-            },
-            "apiKey": "9901c2f42b8fc4f5d48bc8e999fa88d0"
-        })
+        "modelName": "AddressGeneral",
+        "calledMethod": "getSettlements",
+        "methodProperties": {
+            "FindByString": search
+        },
+        "apiKey": get_nova_poshta_api()
+    })
 
     cities = response.json()['data']
     offset = int(query.offset) if query.offset else 0
 
     for result in cities:
         title = f'{result["Description"]} ({result["SettlementTypeDescription"]})'
-        description = f'{result["RegionsDescription"]}, {result["AreaDescription"]}'
+
+        if result['RegionsDescription']:
+            description = f'{result["RegionsDescription"]}, {result["AreaDescription"]}'
+        else:
+            description = f'{result["AreaDescription"]}'
+
         inlines.append(types.InlineQueryResultArticle(
             id=f'{result["Ref"]}|{result["Description"]}',
             title=title,
@@ -553,6 +571,7 @@ def search_city(search, query, bot):
 
 def new_order_skip(obj, bot):
     add_state_user(user_id=obj.from_user.id)
+    bot.send_message(obj.from_user.id, '🛒 Корзина', reply_markup=kb.main_keyboard())
     show_cart(obj, bot)
 
 
