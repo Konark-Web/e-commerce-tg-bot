@@ -194,14 +194,15 @@ def show_products_list(obj, bot, category_id, page_num=1):
     products_per_page = paginator.get_page(page_num)
 
     category = Category.objects.filter(pk=category_id).first()
-    bot.send_message(
-        obj.from_user.id,
-        f"🛍 Каталог товарів з категорії <b>{category.name}</b>\n"
-        f"Сторінка "
-        f"{products_per_page.number}/{products_per_page.paginator.num_pages}",
-    )
 
-    if not products:
+    if products:
+        bot.send_message(
+            obj.from_user.id,
+            f"🛍 Каталог товарів з категорії <b>{category.name}</b>\n"
+            f"Сторінка {products_per_page.number}/"
+            f"{products_per_page.paginator.num_pages}",
+        )
+    else:
         bot.send_message(
             obj.from_user.id, "Нажаль, активних товарів в цій категорії немає."
         )
@@ -256,7 +257,7 @@ def show_products_list(obj, bot, category_id, page_num=1):
 
 
 def show_product(obj, bot, product_id, img_num=1):
-    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    keyboard = types.InlineKeyboardMarkup(row_width=3)
 
     product = Product.objects.filter(pk=product_id)
     images = ProductImage.objects.filter(product__pk=product_id)
@@ -297,13 +298,19 @@ def show_product(obj, bot, product_id, img_num=1):
         else:
             next_image = 1
 
+        current_photo = product_image.number
+        num_photos = product_image.paginator.num_pages
         keyboard.add(
             types.InlineKeyboardButton(
-                text="⬅️ Попереднє фото",
+                text="⬅️ Попереднє",
                 callback_data=f"image_product|{product_id}|{prev_image}",
             ),
             types.InlineKeyboardButton(
-                text="Наступне фото ➡️",
+                text=f'Фото: {current_photo}/{num_photos}',
+                callback_data=f'{current_photo}/{num_photos}'
+            ),
+            types.InlineKeyboardButton(
+                text="Наступне ➡️",
                 callback_data=f"image_product|{product_id}|{next_image}",
             ),
         )
