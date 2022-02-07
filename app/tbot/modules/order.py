@@ -9,6 +9,9 @@ def create_order(user_id):
     user = get_user_by_id(user_id)
     cart = get_or_create_cart(user_id)[0]
 
+    if not cart.get_subtotal[-1]:
+        return None
+
     with transaction.atomic():
         order = Order.objects.create(customer=user,
                                      customer_name=user.customer_name,

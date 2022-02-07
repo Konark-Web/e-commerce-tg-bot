@@ -324,7 +324,7 @@ def show_cart(obj, bot):
         bot.send_message(obj.from_user.id, '🛒 Корзина', reply_markup=kb.main_keyboard())
 
     if not cart_items:
-        bot.send_message(obj.from_user.id, 'Нажаль, корзина поки що порожня.')
+        bot.send_message(obj.from_user.id, 'Нажаль, корзина поки що порожня.', reply_markup=kb.main_keyboard())
         return
 
     for item in cart_items:
@@ -487,7 +487,11 @@ def create_new_order(obj, bot):
 
     order = create_order(user_id)
     if order:
-        bot.send_message(user_id, f'Заказ №{order.pk} успішно створенний!', reply_markup=kb.main_keyboard())
+        bot.send_message(user_id, f'Замовлення №{order.pk} успішно створенний!', reply_markup=kb.main_keyboard())
+    else:
+        bot.send_message(user_id,
+                         'Можливо замовлення вже створено, чи корзина порожня.',
+                         reply_markup=kb.main_keyboard())
 
 
 def search_nova_poshta(search, query, bot):
@@ -665,7 +669,7 @@ def get_cart_item_text(product_title,
         message_text = f'<b>{product_title}</b>\n\n' \
                        f'Кількість: {quantity}\n' \
                        f'Ціна за ед.: {price}\n' \
-                       f'Загальная ціна: {subtotal}\n'
+                       f'Сума: {subtotal}\n'
 
         if item and is_product_empty_by_item(item):
             message_text += '\n<b>Нажаль, товару немає у наявності. Перед оформленням замовлення,' \
