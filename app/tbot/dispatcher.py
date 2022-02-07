@@ -868,7 +868,12 @@ def show_user_orders(obj, bot, page_num=1):
     keyboard = types.InlineKeyboardMarkup(row_width=1)
     for index, order in enumerate(orders_per_page, start=1):
         order_items = OrderItem.objects.filter(order=order.pk)
-        text_message = f"<b>Замовлення №{order.pk}</b>\n\n"
+        text_message = (
+            f"<b>Замовлення №{order.pk}</b>\n\n"
+            f"Ім'я замовника: {order.customer_name}\n"
+            f"Номер телефону: {order.phone_number}\n"
+            f"Адреса: {order.address}, {order.city}\n\n"
+        )
 
         for index_item, order_item in enumerate(order_items, start=1):
             text_message += (
