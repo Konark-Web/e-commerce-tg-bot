@@ -5,8 +5,7 @@ from shop.models import Customer
 
 def get_or_create_user(kwargs):
     customer, new_customer = Customer.objects.get_or_create(
-        telegram_id=kwargs['telegram_id'],
-        username=kwargs['username']
+        telegram_id=kwargs["telegram_id"], username=kwargs["username"]
     )
 
     return customer, new_customer

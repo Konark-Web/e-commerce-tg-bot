@@ -11,9 +11,7 @@ def get_or_create_cart(user_id):
 
 def get_or_create_cart_item(cart, product):
     cart_item, cart_item_new = CartItem.objects.get_or_create(
-        cart=cart,
-        product=product,
-        is_active=True
+        cart=cart, product=product, is_active=True
     )
 
     return cart_item, cart_item_new

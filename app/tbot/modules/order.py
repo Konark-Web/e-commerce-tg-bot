@@ -13,24 +13,29 @@ def create_order(user_id):
         return None
 
     with transaction.atomic():
-        order = Order.objects.create(customer=user,
-                                     customer_name=user.customer_name,
-                                     phone_number=user.phone_number,
-                                     city=user.city,
-                                     address=user.address,
-                                     post_number=user.post_number,
-                                     total=cart.get_subtotal[0])
+        order = Order.objects.create(
+            customer=user,
+            customer_name=user.customer_name,
+            phone_number=user.phone_number,
+            city=user.city,
+            address=user.address,
+            post_number=user.post_number,
+            total=cart.get_subtotal[0],
+        )
 
         cart_items = get_cart_items(cart.pk)
         order_items = []
         for item in cart_items:
             product = item.product
             order_items.append(
-                OrderItem(order=order,
-                          product=product,
-                          price=item.product.price,
-                          quantity=item.quantity,
-                          total=item.product.price * item.quantity))
+                OrderItem(
+                    order=order,
+                    product=product,
+                    price=item.product.price,
+                    quantity=item.quantity,
+                    total=item.product.price * item.quantity,
+                )
+            )
 
             product.quantity = product.quantity - item.quantity
             product.save()
