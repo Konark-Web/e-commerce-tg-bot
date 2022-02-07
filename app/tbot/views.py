@@ -1,7 +1,7 @@
-from telebot import types
-from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from telebot import types
 
 from . import dispatcher as dp
 from .bot import TBot

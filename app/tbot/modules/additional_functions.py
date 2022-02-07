@@ -4,8 +4,7 @@ from telebot import types
 
 from tbot import keyboards as kb
 from tbot.models import BotConfig
-from tbot.modules.cart import (is_product_empty_by_item,
-                               has_user_empty_products)
+from tbot.modules.cart import has_user_empty_products, is_product_empty_by_item
 
 
 def get_nova_poshta_api():

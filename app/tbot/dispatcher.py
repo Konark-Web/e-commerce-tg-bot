@@ -1,29 +1,29 @@
-import requests
-
-from telebot import types
 from itertools import chain
+
+import requests
 from django.core.paginator import Paginator
+from telebot import types
+
+from shop.models import Category, Order, OrderItem, Product, ProductImage, Shop
+from tbot.models import BotConfig
+from tbot.modules.additional_functions import (get_cart_item_text,
+                                               get_item_text_and_keyboard,
+                                               get_nova_poshta_api,
+                                               get_phone_number,
+                                               get_subtotal_text_and_keyboard)
+from tbot.modules.cart import (cart_quantity_changed, cart_total_changed,
+                               get_cart_item_by_id, get_cart_items,
+                               get_or_create_cart, get_or_create_cart_item,
+                               has_user_empty_products,
+                               is_product_empty_by_item)
+from tbot.modules.catalog import get_product_by_id
+from tbot.modules.customer import (add_state_user, change_customer_address,
+                                   change_customer_city, change_customer_name,
+                                   change_customer_phone, get_or_create_user,
+                                   get_user_by_id)
+from tbot.modules.order import create_order
 
 from . import keyboards as kb
-from tbot.models import BotConfig
-from shop.models import (Category, Product, ProductImage,
-                         Shop, Order, OrderItem)
-
-from tbot.modules.customer import (get_or_create_user, add_state_user,
-                                   change_customer_name, change_customer_phone,
-                                   change_customer_city, get_user_by_id,
-                                   change_customer_address)
-from tbot.modules.catalog import get_product_by_id
-from tbot.modules.cart import (get_or_create_cart, get_or_create_cart_item,
-                               get_cart_item_by_id, get_cart_items,
-                               is_product_empty_by_item, cart_quantity_changed,
-                               cart_total_changed, has_user_empty_products)
-from tbot.modules.order import create_order
-from tbot.modules.additional_functions import (get_nova_poshta_api,
-                                               get_phone_number,
-                                               get_cart_item_text,
-                                               get_subtotal_text_and_keyboard,
-                                               get_item_text_and_keyboard)
 
 
 def start_message(message, bot):

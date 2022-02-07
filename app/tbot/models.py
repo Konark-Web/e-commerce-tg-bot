@@ -1,5 +1,4 @@
 import telebot
-
 from django.db import models
 
 

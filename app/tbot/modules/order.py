@@ -1,8 +1,8 @@
 from django.db import transaction
 
-from tbot.modules.customer import get_user_by_id
-from tbot.modules.cart import get_or_create_cart, get_cart_items
 from shop.models import Order, OrderItem
+from tbot.modules.cart import get_cart_items, get_or_create_cart
+from tbot.modules.customer import get_user_by_id
 
 
 def create_order(user_id):
