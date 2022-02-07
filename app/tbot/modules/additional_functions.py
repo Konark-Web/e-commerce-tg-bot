@@ -52,22 +52,19 @@ def get_cart_item_text(
         message_text = f"<b>Товар {product_title} доданий у корзину.</b>"
 
         if not only_added and quantity:
-            message_text += f"\n\nЗараз цього товару у корзині: {quantity}"
+            message_text += f"\n\nЗараз цього товару у корзині: {quantity}\n" \
+                            f"На суму: {quantity * price}"
 
     return message_text
 
 
 def get_item_text_and_keyboard(obj, bot, cart_item, is_cart):
     if is_cart:
-        item_quantity = cart_item.quantity
-        item_price = cart_item.product.price
-        item_subtotal = item_quantity * item_price
-
         text_message = get_cart_item_text(
             product_title=cart_item.product.title,
-            quantity=item_quantity,
-            price=item_price,
-            subtotal=item_subtotal,
+            quantity=cart_item.quantity,
+            price=cart_item.product.price,
+            subtotal=cart_item.quantity * cart_item.product.price,
             is_cart=True,
         )
         keyboard = kb.item_control_keyboard(cart_item.pk, is_cart=True)
@@ -84,7 +81,9 @@ def get_item_text_and_keyboard(obj, bot, cart_item, is_cart):
         )
     else:
         text_message = get_cart_item_text(
-            product_title=cart_item.product.title, quantity=cart_item.quantity
+            product_title=cart_item.product.title,
+            quantity=cart_item.quantity,
+            price=cart_item.product.price
         )
         keyboard = kb.item_control_with_cart_keyboard(cart_item.pk)
 
@@ -127,7 +126,8 @@ def get_subtotal_text_and_keyboard(cart):
         else:
             keyboard.add(
                 types.InlineKeyboardButton(
-                    "Видалити неактуальні товари", callback_data="remove_empty_products"
+                    "Видалити неактуальні товари",
+                    callback_data="remove_empty_products"
                 )
             )
             subtotal_message += (
@@ -136,7 +136,8 @@ def get_subtotal_text_and_keyboard(cart):
                 "товари яких немає у наявності.</b>"
             )
     else:
-        subtotal_message = "Вже немає чого купувати. " "Додайте щось і ми продовжимо."
+        subtotal_message = "Вже немає чого купувати. " \
+                           "Додайте щось і ми продовжимо."
         keyboard = None
 
     return subtotal_message, keyboard

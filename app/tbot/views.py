@@ -124,6 +124,7 @@ def callback_handler(call: types.CallbackQuery):
             bot,
             category_id=call.data.split("|")[1],
             page_num=call.data.split("|")[2],
+            more=True
         )
     elif "product_item" in call.data:
         dp.show_product(call, bot, product_id=call.data.split("|")[-1])
@@ -135,7 +136,12 @@ def callback_handler(call: types.CallbackQuery):
             img_num=call.data.split("|")[2],
         )
     elif "hide_product" in call.data:
-        bot.delete_message(call.from_user.id, call.message.message_id)
+        dp.show_short_product(
+            call,
+            bot,
+            product_id=call.data.split("|")[-1],
+            back=True
+        )
     elif "add_to_cart" in call.data:
         dp.add_product_to_cart(call, bot, product_id=call.data.split("|")[-1])
     elif "remove_cart_item" in call.data:

@@ -104,6 +104,7 @@ class Product(models.Model):
     created = models.DateTimeField("Дата створення", auto_now_add=True,
                                    editable=False)
     is_active = models.BooleanField(default=True)
+    main_image = models.BooleanField(default=True, editable=False)
 
     def __str__(self):
         return self.title
@@ -125,6 +126,7 @@ class ProductImage(models.Model):
     image = models.ImageField(
         "Зображення", upload_to="product-img/", null=True, blank=True
     )
+    main_image = models.BooleanField(default=False, editable=False)
 
     def __str__(self):
         return self.product.title

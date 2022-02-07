@@ -176,7 +176,7 @@ def show_catalog(obj, bot, page_num=1):
         )
 
 
-def show_products_list(obj, bot, category_id, page_num=1):
+def show_products_list(obj, bot, category_id, page_num=1, more=False):
     products_stock = Product.objects.filter(
         category=category_id, quantity__gt=0, is_active=True
     ).distinct()
@@ -209,39 +209,48 @@ def show_products_list(obj, bot, category_id, page_num=1):
         show_catalog(obj.message, bot)
 
     for index, product in enumerate(products_per_page, start=1):
-        keyboard = types.InlineKeyboardMarkup(row_width=1)
-
-        product_text = (
-            f"<b>{product.title}</b>\n\n"
-            f"{product.excerpt}\n\n"
-            f"<b>Ціна:</b> {product.price}"
-        )
-
-        if not product.quantity:
-            product_text += "\n\n<i>Нажаль, товару поки немає в наявності.</i>"
-
-        keyboard.add(
-            types.InlineKeyboardButton(
-                text="ℹ️ Подробиці", callback_data=f"product_item|{product.pk}"
-            )
-        )
-
-        if page_num != 1:
-            bot.edit_message_reply_markup(
-                obj.from_user.id, obj.message.message_id, reply_markup=keyboard
-            )
+        show_short_product(obj, bot, product.pk)
 
         if index == len(products_per_page) and products_per_page.has_next():
             next_page = products_per_page.next_page_number()
-            keyboard.add(
+            next_keyboard = types.InlineKeyboardMarkup(row_width=1)
+            next_keyboard.add(
                 types.InlineKeyboardButton(
                     text="Загрузити більше товарів",
                     callback_data=f"products_more|"
-                    f"{product.category.pk}|{next_page}",
+                                  f"{product.category.pk}|{next_page}",
                 )
             )
 
-        if product.image:
+            bot.send_message(
+                obj.from_user.id,
+                'В цій категорії є ще товари. Хочете побачити більше?',
+                reply_markup=next_keyboard)
+
+        if more:
+            bot.delete_message(obj.from_user.id, obj.message.message_id)
+
+
+def show_short_product(obj, bot, product_id, back=False):
+    product = Product.objects.get(pk=product_id)
+    keyboard = types.InlineKeyboardMarkup(row_width=1)
+
+    product_text = (
+        f"<b>{product.title}</b>\n\n"
+        f"{product.excerpt}\n\n"
+        f"<b>Ціна:</b> {product.price}"
+    )
+
+    if not product.quantity:
+        product_text += "\n\n<i>Нажаль, товару поки немає в наявності.</i>"
+    keyboard.add(
+        types.InlineKeyboardButton(
+            text="ℹ️ Подробиці", callback_data=f"product_item|{product.pk}"
+        )
+    )
+
+    if product.image:
+        if not back:
             bot.send_photo(
                 obj.from_user.id,
                 product.image,
@@ -249,11 +258,33 @@ def show_products_list(obj, bot, category_id, page_num=1):
                 reply_markup=keyboard
             )
         else:
+            bot.edit_message_media(
+                types.InputMedia(type="photo", media=product.image),
+                obj.from_user.id,
+                obj.message.message_id
+            )
+
+            bot.edit_message_caption(
+                product_text,
+                obj.from_user.id,
+                obj.message.message_id,
+                reply_markup=keyboard
+            )
+    else:
+        if not back:
             bot.send_message(
                 obj.from_user.id,
                 product_text,
                 reply_markup=keyboard
             )
+        else:
+            bot.edit_message_text(
+                product_text,
+                obj.from_user.id,
+                obj.message.message_id,
+                reply_markup=keyboard
+            )
+
 
 
 def show_product(obj, bot, product_id, img_num=1):
@@ -263,7 +294,7 @@ def show_product(obj, bot, product_id, img_num=1):
     images = ProductImage.objects.filter(product__pk=product_id)
 
     product_images = list(
-        sorted(chain(product, images), key=lambda objects: objects.pk)
+        sorted(chain(product, images), key=lambda objects: -objects.main_image)
     )
 
     product = product[0]
@@ -318,34 +349,30 @@ def show_product(obj, bot, product_id, img_num=1):
     keyboard.add(
         types.InlineKeyboardButton(
             text="🔙 Назад",
-            callback_data="hide_product"
+            callback_data=f"hide_product|{product_id}"
         )
     )
 
     if product.image:
-        if img_num == 1:
-            bot.send_photo(
-                obj.from_user.id,
-                product.image,
-                product_text,
-                reply_markup=keyboard
-            )
-        else:
-            bot.edit_message_media(
-                types.InputMedia(type="photo", media=product_image[0].image),
-                obj.from_user.id,
-                obj.message.message_id,
-                reply_markup=keyboard,
-            )
+        bot.edit_message_media(
+            types.InputMedia(type="photo", media=product_image[0].image),
+            obj.from_user.id,
+            obj.message.message_id,
+            reply_markup=keyboard,
+        )
 
-            bot.edit_message_caption(
-                product_text,
-                obj.from_user.id,
-                obj.message.message_id,
-                reply_markup=keyboard,
-            )
+        bot.edit_message_caption(
+            product_text,
+            obj.from_user.id,
+            obj.message.message_id,
+            reply_markup=keyboard,
+        )
     else:
-        bot.send_message(obj.from_user.id, product_text, reply_markup=keyboard)
+        bot.edit_message_text(
+            obj.from_user.id,
+            product_text,
+            reply_markup=keyboard
+        )
 
 
 def add_product_to_cart(obj, bot, product_id):
@@ -371,7 +398,10 @@ def add_product_to_cart(obj, bot, product_id):
     else:
         bot.send_message(
             obj.from_user.id,
-            get_cart_item_text(product_title=product.title),
+            get_cart_item_text(
+                product_title=product.title,
+                price=product.price
+            ),
             reply_markup=kb.item_control_with_cart_keyboard(cart_item.pk),
         )
 
