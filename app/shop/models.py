@@ -1,18 +1,23 @@
 from django.db import models
-from django.core.exceptions import ValidationError
 
 
 class Customer(models.Model):
-    telegram_id = models.CharField('Telegram ID', max_length=100, primary_key=True)
-    username = models.CharField('Username', max_length=200,
-                                blank=True, null=True, default=None)
-    customer_name = models.CharField('ФІО користувача', max_length=255, blank=True, default='')
-    phone_number = models.CharField('Номер телефону', max_length=64, blank=True, default='')
+    telegram_id = models.CharField('Telegram ID', max_length=100,
+                                   primary_key=True)
+    username = models.CharField('Username', max_length=200, blank=True,
+                                null=True, default=None)
+    customer_name = models.CharField('ФІО користувача', max_length=255,
+                                     blank=True, default='')
+    phone_number = models.CharField('Номер телефону', max_length=64,
+                                    blank=True, default='')
     city = models.CharField('Місто', max_length=200, blank=True, default='')
-    address = models.CharField('Адреса доставки', max_length=255, blank=True, default='')
-    post_number = models.CharField('Номер відділення', max_length=32, blank=True, default='')
+    address = models.CharField('Адреса доставки', max_length=255, blank=True,
+                               default='')
+    post_number = models.CharField('Номер відділення', max_length=32,
+                                   blank=True, default='')
     date_joined = models.DateTimeField('Дата реєстрації', auto_now_add=True)
-    state = models.CharField(max_length=200, blank=True, null=True, default=None, editable=False)
+    state = models.CharField(max_length=200, blank=True, null=True,
+                             default=None, editable=False)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -31,9 +36,10 @@ class Customer(models.Model):
 
 class Category(models.Model):
     name = models.CharField('Назва категорії', max_length=50, blank=False)
-    priority = models.IntegerField('Пріоритет категорії',
-                                   help_text='Чим вище пріоритет, тим вище відображається категорія',
-                                   default=1)
+    priority = models.IntegerField(
+        'Пріоритет категорії',
+        help_text='Чим вище пріоритет, тим вище відображається категорія',
+        default=1)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -74,14 +80,17 @@ class Shop(models.Model):
 
 class Product(models.Model):
     title = models.CharField('Назва товару', max_length=100, default='')
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True,
-                                 verbose_name='Категорія', related_name='product')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL,
+                                 null=True, verbose_name='Категорія',
+                                 related_name='product')
     excerpt = models.CharField('Короткий опис', max_length=200, blank=True)
     description = models.TextField('Повний опис')
-    image = models.ImageField('Зображення', upload_to='product-img/', null=True, blank=True)
+    image = models.ImageField('Зображення', upload_to='product-img/',
+                              null=True, blank=True)
     price = models.FloatField('Ціна', default=0)
     quantity = models.IntegerField('Кількість товару', default=0)
-    created = models.DateTimeField('Дата створення', auto_now_add=True, editable=False)
+    created = models.DateTimeField('Дата створення', auto_now_add=True,
+                                   editable=False)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -94,21 +103,26 @@ class Product(models.Model):
 
 
 class ProductImage(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, default=None, related_name='images')
-    image = models.ImageField('Зображення', upload_to='product-img/', null=True, blank=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True,
+                                default=None, related_name='images')
+    image = models.ImageField('Зображення', upload_to='product-img/',
+                              null=True, blank=True)
 
     def __str__(self):
         return self.product.title
 
 
 class Cart(models.Model):
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='Клієнт', related_name='cart')
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE,
+                                 verbose_name='Клієнт', related_name='cart')
     total_price = models.FloatField(default=0)
-    total_message_id = models.CharField(max_length=200, null=True, editable=False)
+    total_message_id = models.CharField(max_length=200, null=True,
+                                        editable=False)
 
     @property
     def get_subtotal(self):
-        active_items = CartItem.objects.filter(cart=self.pk, is_active=True, product__quantity__gt=0)
+        active_items = CartItem.objects.filter(cart=self.pk, is_active=True,
+                                               product__quantity__gt=0)
         total_price = 0
         quantity = 0
 
@@ -120,8 +134,10 @@ class Cart(models.Model):
 
 
 class CartItem(models.Model):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='cart_item')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_item')
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE,
+                             related_name='cart_item')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE,
+                                related_name='cart_item')
     quantity = models.IntegerField(default=1)
     is_active = models.BooleanField(default=True)
 
@@ -139,17 +155,22 @@ class Order(models.Model):
         ('refunded', 'Refunded')
     )
 
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='order')
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE,
+                                 related_name='order')
     customer_name = models.CharField('ФІО покупця', max_length=255, default='')
-    phone_number = models.CharField('Номер телефону', max_length=64, default='')
+    phone_number = models.CharField('Номер телефону', max_length=64,
+                                    default='')
     city = models.CharField('Місто', max_length=200, default='')
     address = models.CharField('Адреса доставки', max_length=255, default='')
-    post_number = models.CharField('Номер відділення', blank=True, max_length=32, default='')
+    post_number = models.CharField('Номер відділення', blank=True,
+                                   max_length=32, default='')
     total = models.FloatField('Загальна сума замовлення', default=0)
-    status = models.CharField('Статус замовлення', max_length=25, null=False, choices=CHOICES)
+    status = models.CharField('Статус замовлення', max_length=25, null=False,
+                              default='processing', choices=CHOICES)
 
     def __str__(self):
-        return f'Замовлення №{self.pk}: {self.customer_name} ({self.total} грн.)'
+        return f'Замовлення №{self.pk}: {self.customer_name} ' \
+               f'({self.total} грн.)'
 
     def update_price(self):
         order_items = OrderItem.objects.filter(order=self.pk)
@@ -169,10 +190,15 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, verbose_name='Товар', null=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL,
+                                verbose_name='Товар', null=True)
     price = models.FloatField('Ціна', null=False, default=0)
-    quantity = models.IntegerField('Кількість товару', null=False, default=0,
-                                   help_text='Коли даєте чи змінюєте замовлення, переконайтесь що товар є на складі')
+    quantity = models.IntegerField(
+        'Кількість товару',
+        null=False,
+        default=0,
+        help_text='Коли даєте чи змінюєте замовлення, '
+                  'переконайтесь що товар є на складі')
     total = models.FloatField('Загальна вартість', null=False, default=0)
 
     def __init__(self, *args, **kwargs):
@@ -181,12 +207,14 @@ class OrderItem(models.Model):
         self.old_total = self.total
 
     def __str__(self):
-        return f'{self.product.title} | Кількість: {self.quantity} | Сумма: {self.total}'
+        return f'{self.product.title} | Кількість: {self.quantity} | ' \
+               f'Сумма: {self.total}'
 
     def changed_price_or_quantity(self):
         if self.price and self.quantity:
             self.total = self.quantity * self.price
-            self.product.quantity = self.product.quantity - (self.quantity - self.old_quantity)
+            self.product.quantity = self.product.quantity - \
+                                    (self.quantity - self.old_quantity)
             self.product.save()
 
     def add_new_cart_item(self):

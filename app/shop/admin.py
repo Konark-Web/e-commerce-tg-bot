@@ -12,7 +12,8 @@ class OrderAdminInline(admin.StackedInline):
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('telegram_id', 'customer_name', 'phone_number', 'city', 'is_active')
+    list_display = ('telegram_id', 'customer_name', 'phone_number', 'city',
+                    'is_active')
     list_filter = ('city', 'is_active')
     inlines = [OrderAdminInline]
 
@@ -51,7 +52,8 @@ class OrderItemAdmin(admin.StackedInline):
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemAdmin]
     readonly_fields = ('total', )
-    list_display = ('pk', 'customer_name', 'phone_number', 'address', 'total', 'status')
+    list_display = ('pk', 'customer_name', 'phone_number', 'address', 'total',
+                    'status')
     list_filter = ('status',)
 
     class Meta:

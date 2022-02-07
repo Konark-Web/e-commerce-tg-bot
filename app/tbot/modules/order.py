@@ -19,18 +19,18 @@ def create_order(user_id):
                                      city=user.city,
                                      address=user.address,
                                      post_number=user.post_number,
-                                     total=cart.get_subtotal[0],
-                                     status='processing')
+                                     total=cart.get_subtotal[0])
 
         cart_items = get_cart_items(cart.pk)
         order_items = []
         for item in cart_items:
             product = item.product
-            order_items.append(OrderItem(order=order,
-                                         product=product,
-                                         price=item.product.price,
-                                         quantity=item.quantity,
-                                         total=item.product.price * item.quantity))
+            order_items.append(
+                OrderItem(order=order,
+                          product=product,
+                          price=item.product.price,
+                          quantity=item.quantity,
+                          total=item.product.price * item.quantity))
 
             product.quantity = product.quantity - item.quantity
             product.save()

@@ -1,6 +1,5 @@
-import json
-
 import telebot
+
 from django.db import connection
 
 from .models import BotConfig
@@ -8,7 +7,8 @@ from .models import BotConfig
 
 class TBot:
     def __init__(self):
-        if 'tbot_botconfig' in connection.introspection.table_names() and BotConfig.objects.filter(is_active=True):
+        if 'tbot_botconfig' in connection.introspection.table_names()\
+                and BotConfig.objects.filter(is_active=True):
             config = BotConfig.objects.get(is_active=True)
             self.server_url = config.server_url
             self.bot = telebot.TeleBot(config.token, parse_mode='HTML')

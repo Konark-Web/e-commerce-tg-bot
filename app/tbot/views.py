@@ -125,7 +125,7 @@ def callback_handler(call: types.CallbackQuery):
     elif 'image_product' in call.data:
         dp.show_product(call, bot, product_id=call.data.split('|')[1], img_num=call.data.split('|')[2])
     elif 'hide_product' in call.data:
-        dp.hide_product(call, bot)
+        bot.delete_message(call.from_user.id, call.message.message_id)
     elif 'add_to_cart' in call.data:
         dp.add_product_to_cart(call, bot, product_id=call.data.split('|')[-1])
     elif 'remove_cart_item' in call.data:
